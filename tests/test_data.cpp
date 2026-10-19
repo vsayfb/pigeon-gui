@@ -83,6 +83,7 @@ private slots:
     void boundedRowHistory();
     void icmpVersionFiveAndFilters();
     void quicMetadataAndStableIdentity();
+    void espVersionSevenAndFilters();
 };
 
 void DataTests::exactWideIntegerFormatting()
@@ -323,6 +324,39 @@ void DataTests::quicMetadataAndStableIdentity()
     QVERIFY(execute(path, {QStringLiteral("UPDATE conversations SET quic=2 WHERE protocol=17")}));
     QVERIFY(!reader.read(path, options, 100, after, error));
     QVERIFY(after.live.first().quic); // Last good snapshot survives malformed metadata.
+}
+
+void DataTests::espVersionSevenAndFilters()
+{
+    QTemporaryDir directory;
+    const QString path = createFixture(directory.filePath(QStringLiteral("esp.db")));
+    QVERIFY(!path.isEmpty());
+    QVERIFY(execute(path, {
+        QStringLiteral("ALTER TABLE conversations ADD COLUMN quic INTEGER NOT NULL DEFAULT 0"),
+        QStringLiteral("PRAGMA user_version=7"),
+        QStringLiteral("INSERT INTO conversations VALUES(x'0a000001',x'08080808',0,50,1,1,8,8,10,95,NULL,'',0)"),
+        QStringLiteral("INSERT INTO conversations VALUES(x'20010db8000000000000000000000001',"
+                       "x'20010db8000000000000000000000002',0,50,1,1,8,8,10,95,NULL,'',0)")
+    }));
+
+    DatabaseReader reader;
+    ReadOptions options;
+    options.protocol = 50;
+    Snapshot snapshot;
+    QString error;
+    QVERIFY2(reader.read(path, options, 100, snapshot, error), qPrintable(error));
+    QCOMPARE(snapshot.live.size(), 2);
+    QCOMPARE(snapshot.top.first().protocol, 50);
+    QCOMPARE(snapshot.top.first().remotePort, 0);
+    QVERIFY(snapshot.top.first().application.isEmpty());
+    QVERIFY(!snapshot.top.first().quic);
+    options.family = 6;
+    QVERIFY2(reader.read(path, options, 100, snapshot, error), qPrintable(error));
+    QCOMPARE(snapshot.live.size(), 1);
+    QCOMPARE(snapshot.live.first().localAddress.size(), 16);
+    QVERIFY(execute(path, {QStringLiteral("UPDATE conversations SET application='guessed-owner' WHERE protocol=50")}));
+    QVERIFY(!reader.read(path, options, 100, snapshot, error));
+    QVERIFY(snapshot.live.first().application.isEmpty());
 }
 
 void DataTests::failedReadDoesNotModifySnapshot()

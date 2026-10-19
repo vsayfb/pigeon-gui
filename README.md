@@ -49,3 +49,11 @@ set. The UDP filter still includes it. The label does not change identity,
 counters or graph baselines, and does not imply that all traffic in an aggregate
 is QUIC or HTTP/3. Header evidence is not cryptographic authentication. Older
 files simply show UDP; the GUI does not infer QUIC from ports or perform capture.
+
+Schema v7 adds ESP (protocol 50) peer observations over IPv4/IPv6. The GUI
+supports schemas v4–v7 and offers an ESP filter, showing no port or inferred
+application. ESP identifies the visible outer IPsec peer, not encrypted inner
+destinations. Its byte totals include opaque protection overhead. Native and
+UDP-encapsulated ESP share the collector's protocol-50 aggregate; IKE/keepalive
+traffic remains UDP. VLAN tags are decoded by the collector and do not require
+new GUI columns. Restart the viewer after the collector schema upgrade.

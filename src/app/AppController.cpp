@@ -235,7 +235,7 @@ void AppController::setSearch(const QString &search)
 
 void AppController::setProtocol(int protocol)
 {
-    if ((protocol != 0 && protocol != 6 && protocol != 17 && protocol != 1 && protocol != 58) || m_options.protocol == protocol)
+    if ((protocol != 0 && protocol != 6 && protocol != 17 && protocol != 1 && protocol != 58 && protocol != 50) || m_options.protocol == protocol)
         return;
     m_options.protocol = protocol;
     optionsChanged();

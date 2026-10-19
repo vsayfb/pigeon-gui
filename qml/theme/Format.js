@@ -28,7 +28,7 @@ function speed(value, measured) {
 
 function protocol(value, quic) {
     if (value === 17 && quic) return "QUIC (UDP)";
-    return value === 1 ? "ICMP" : value === 58 ? "ICMPv6"
+    return value === 1 ? "ICMP" : value === 58 ? "ICMPv6" : value === 50 ? "ESP"
         : value === 6 ? "TCP" : value === 17 ? "UDP" : String(value);
 }
 

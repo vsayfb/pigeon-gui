@@ -2,11 +2,11 @@
 
 This document records the **collector-owned** persistence contract used by the
 GUI reader. Its authority is the collector reference's
-`docs/SCHEMA.md` and `src/store/schema.h`. The reader supports schema v4, v5 and v6.
+`docs/SCHEMA.md` and `src/store/schema.h`. The reader supports schema v4, v5, v6 and v7.
 
 ## File ownership
 
-The collector writes the SQLite database; the GUI is a reader. The GUI must open an **existing** file read-only, verify `PRAGMA user_version` is 4, 5 or 6,
+The collector writes the SQLite database; the GUI is a reader. The GUI must open an **existing** file read-only, verify `PRAGMA user_version` is 4, 5, 6 or 7,
 and reject other versions or missing tables without creating, migrating, or
 modifying any data. The GUI must not require collector source or capture
 privileges. The collector may use SQLite WAL mode, so readers must tolerate
@@ -25,9 +25,9 @@ composite primary key is:
 | --- | --- | --- |
 | `us_ip` | BLOB | Local network-order IPv4 (4 bytes) or IPv6 (16 bytes) |
 | `remote_ip` | BLOB | Remote address, same family/byte length as `us_ip` |
-| `remote_port` | INTEGER | Remote port, 0–65535; zero sentinel for ICMP |
-| `protocol` | INTEGER | ICMP = 1, TCP = 6, UDP = 17, ICMPv6 = 58 |
-| `quic` (v6) | INTEGER | 0/1; QUIC observed in this UDP aggregate |
+| `remote_port` | INTEGER | Remote port, 0–65535; zero sentinel for ICMP and ESP |
+| `protocol` | INTEGER | ICMP = 1, TCP = 6, UDP = 17, ESP = 50, ICMPv6 = 58 |
+| `quic` (v6+) | INTEGER | 0/1; QUIC observed in this UDP aggregate |
 | `application` | TEXT | Executable basename, max 255 bytes; empty means unresolved |
 | `packets_out`, `packets_in` | INTEGER | Cumulative directional packet counts |
 | `bytes_out`, `bytes_in` | INTEGER | Cumulative directional **protocol payload** bytes |
@@ -117,3 +117,17 @@ The flag is evidence observed somewhere in an aggregate, not a promise that all
 its lifetime bytes are QUIC. No HTTP/3 classification or decryption is implied.
 The collector owns detection, migration and sticky persistence. Restart the
 viewer after deploying a collector schema upgrade.
+
+## Schema v7 ESP peers
+
+Protocol 50 is an ESP observation with IPv4 or IPv6 outer addresses. The reader
+requires zero remote_port, empty application, and quic=0 for these rows. It does
+not infer encrypted inner peers, ports, processes or plaintext sizes. ESP body
+byte totals exclude the visible eight-byte header and include protection
+padding/IV/authentication overhead. Native and standard UDP/4500-encapsulated
+ESP aggregate together; separately recorded IKE/keepalives remain UDP.
+
+VLAN tags are handled before IP parsing in the collector. They are not stored
+or used in identity; existing endpoint presentation continues to work unchanged.
+Version 7 retains the v6 columns, including QUIC metadata. The GUI reads v4–v7,
+requires the metadata column for v6/v7, and never migrates or writes these files.
