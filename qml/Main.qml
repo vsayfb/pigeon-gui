@@ -16,6 +16,7 @@ ApplicationWindow {
     color: Theme.background
 
     property int currentPage: 0
+    readonly property bool trafficPage: currentPage === 1 || currentPage === 2
     readonly property bool compact: width < 940
     readonly property var titles: [qsTr("Overview"), qsTr("Live Traffic"),
                                    qsTr("Top Traffic"), qsTr("Applications"), qsTr("New Endpoints")]
@@ -145,6 +146,13 @@ ApplicationWindow {
                             color: Theme.textPrimary
                         }
                     }
+                    Button {
+                        text: readerController.paused ? qsTr("Resume") : qsTr("Pause")
+                        enabled: readerController.hasSnapshot
+                        Accessible.name: readerController.paused ? qsTr("Resume automatic database refresh")
+                                                               : qsTr("Pause automatic database refresh")
+                        onClicked: readerController.setPaused(!readerController.paused)
+                    }
                     Rectangle {
                         width: 106
                         height: 30
@@ -153,6 +161,7 @@ ApplicationWindow {
                         Text {
                             anchors.centerIn: parent
                             text: readerController.error.length > 0 ? qsTr("Read failed")
+                                : readerController.paused ? qsTr("Paused")
                                 : readerController.hasSnapshot ? qsTr("Read-only") : qsTr("No data")
                             color: readerController.error.length > 0 ? Theme.danger : Theme.accent
                             font.pixelSize: 12
@@ -252,13 +261,23 @@ ApplicationWindow {
                 }
             }
 
+            FilterBar {
+                Layout.fillWidth: true
+                Layout.leftMargin: root.compact ? 14 : 24
+                Layout.rightMargin: root.compact ? 14 : 24
+                Layout.topMargin: 8
+                Layout.bottomMargin: 4
+                visible: readerController.hasSnapshot && root.currentPage !== 0
+                page: root.currentPage
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
                 color: Theme.border
             }
 
-            Loader {
+            StackLayout {
                 id: body
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -267,11 +286,23 @@ ApplicationWindow {
                 Layout.rightMargin: root.compact ? 14 : 24
                 Layout.topMargin: 17
                 visible: readerController.hasSnapshot
-                active: visible
-                sourceComponent: root.currentPage === 0 ? overviewComponent
-                    : root.currentPage === 1 ? liveComponent
-                    : root.currentPage === 2 ? topComponent
-                    : root.currentPage === 3 ? applicationsComponent : endpointsComponent
+                currentIndex: root.currentPage
+                OverviewPage { }
+                TrafficPage {
+                    live: true
+                    onConversationActivated: detailsDrawer.open()
+                }
+                TrafficPage {
+                    live: false
+                    onConversationActivated: detailsDrawer.open()
+                }
+                ApplicationsPage {
+                    onApplicationActivated: function(name) {
+                        readerController.selectApplication(name)
+                        root.currentPage = 2
+                    }
+                }
+                EndpointsPage { }
             }
 
             EmptyState {
@@ -284,9 +315,7 @@ ApplicationWindow {
         }
     }
 
-    Component { id: overviewComponent; OverviewPage { } }
-    Component { id: liveComponent; TrafficPage { live: true } }
-    Component { id: topComponent; TrafficPage { live: false } }
-    Component { id: applicationsComponent; ApplicationsPage { } }
-    Component { id: endpointsComponent; EndpointsPage { } }
+    ConversationDetails {
+        id: detailsDrawer
+    }
 }

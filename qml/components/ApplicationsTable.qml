@@ -7,6 +7,7 @@ import "../theme/Format.js" as Format
 SurfaceCard {
     id: table
     property var sourceModel: null
+    signal applicationActivated(string name)
     readonly property int tableWidth: 860
     implicitHeight: 430
     clip: true
@@ -50,6 +51,15 @@ SurfaceCard {
                 model: table.sourceModel
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                activeFocusOnTab: true
+                Keys.onReturnPressed: {
+                    if (list.currentItem)
+                        table.applicationActivated(list.currentItem.identity)
+                }
+                Keys.onSpacePressed: {
+                    if (list.currentItem)
+                        table.applicationActivated(list.currentItem.identity)
+                }
                 delegate: Rectangle {
                     id: entry
                     required property string identity
@@ -62,6 +72,16 @@ SurfaceCard {
                     required property int index
                     width: list.width; height: 53
                     color: index % 2 ? Theme.rowAlternate : Theme.surface
+                    TapHandler {
+                        onTapped: {
+                            list.currentIndex = entry.index
+                            list.forceActiveFocus()
+                            table.applicationActivated(entry.identity)
+                        }
+                    }
+                    HoverHandler { id: rowHover }
+                    border.width: rowHover.hovered || activeFocus ? 1 : 0
+                    border.color: Theme.accent
                     Row {
                         anchors.fill: parent
                         CellText { width: 225; height: parent.height; label: entry.name; prominent: true; ink: Theme.textPrimary }

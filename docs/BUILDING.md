@@ -72,5 +72,32 @@ run can use `QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software`, but this is
 not a substitute for visual inspection on the real display server.
 
 The optional `pigeon-gui-fixture` CTest checks the Python fixture itself.
-The Qt data tests remain `pigeon-data`; there is not yet an automated QML
-visual-regression suite.
+The Qt data tests run as `pigeon-data`. Commit 4 adds `pigeon-controller`
+for asynchronous filter changes, exact unresolved-application drill-down,
+selection identity, pause/resume, and database-switch behavior. There is not
+an automated QML visual-regression suite yet.
+
+## Commit-4 interaction checks
+
+In **Applications**, choose an application, including **Unresolved**. The app
+should switch to Top Traffic and display only the selected application's
+conversations. Text search is cleared; protocol and family constraints remain.
+Use **Remove application** to return to all conversations.
+
+Live supports 10-, 30-, 120-second and all-recorded recency scopes. Its rate
+ranking is independent of the cumulative ranking used by Top and Applications.
+Live rates rank the 200 newest matches; waiting rows are ranked below measured
+rows. Endpoints ignore application/protocol restrictions and retain their global
+first-seen order. Overview and Applications remain unfiltered.
+
+Use Tab to reach the table, arrow keys to choose a row, then Enter or Space to
+open conversation details (or an application drill-down). Escape closes the
+details drawer. The drawer shows exact cumulative counters, local and remote
+IP addresses, remote port/protocol, first/last seen timestamps and the observed
+DNS association as plain text. Pause freezes refreshes; filter changes while
+paused take effect on resume, and the next rate estimate may span the pause.
+
+Before approving Commit 4, manually test a selected conversation while its
+ranking changes, both wide and narrow layouts, empty search results, switching
+databases during refresh, and read errors. Automated Qt compilation and QML
+visual tests must be run in a Qt-equipped environment.

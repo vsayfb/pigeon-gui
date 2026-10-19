@@ -65,6 +65,7 @@ public:
     QVariant data(const QModelIndex &index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
     void setRows(QVector<Conversation> rows) { update(std::move(rows)); }
+    bool findIdentity(const QString &identity, Conversation &row) const;
 };
 
 class ApplicationsModel : public KeyedModel<Application> {

@@ -4,24 +4,42 @@
 #include <QFileInfo>
 #include <QUrl>
 
+#include <utility>
+
 namespace pigeon {
 
 void ReaderWorker::refresh(quint64 token, const QString &path, const ReadOptions &options)
 {
     if (!m_clock.isValid())
         m_clock.start();
+
     Snapshot candidate;
     QString error;
     const bool ok = m_reader.read(path, options, QDateTime::currentSecsSinceEpoch(), candidate, error);
+    m_candidateReady = false;
     if (ok) {
-        // Only committed, successful reads advance rate baselines.
-        if (m_samplePath != path) {
-            m_sampler.reset();
-            m_samplePath = path;
+        // A rate calculation is provisional until the controller accepts the
+        // matching generation. A superseded result cannot advance baselines.
+        m_candidateSampler = m_sampler;
+        m_candidatePath = m_samplePath;
+        if (m_candidatePath != path) {
+            m_candidateSampler.reset();
+            m_candidatePath = path;
         }
-        m_sampler.sample(candidate, m_clock.nsecsElapsed() / 1000000000.0, options.liveSort);
+        m_candidateSampler.sample(candidate, m_clock.nsecsElapsed() / 1000000000.0, options.liveSort);
+        m_candidateToken = token;
+        m_candidateReady = true;
     }
     emit completed(token, path, ok, candidate, error);
+}
+
+void ReaderWorker::finalize(quint64 token, bool accepted)
+{
+    if (m_candidateReady && m_candidateToken == token && accepted) {
+        m_sampler = std::move(m_candidateSampler);
+        m_samplePath = m_candidatePath;
+    }
+    m_candidateReady = false;
 }
 
 AppController::AppController(QObject *parent)
@@ -38,11 +56,16 @@ AppController::AppController(QObject *parent)
     connect(&m_thread, &QThread::finished, worker, &QObject::deleteLater);
     connect(this, &AppController::refreshRequested, worker, &ReaderWorker::refresh,
             Qt::QueuedConnection);
+    connect(this, &AppController::finalizeRequested, worker, &ReaderWorker::finalize,
+            Qt::QueuedConnection);
     connect(worker, &ReaderWorker::completed, this, &AppController::acceptResult,
             Qt::QueuedConnection);
     m_thread.start();
     m_timer.setInterval(1000);
-    connect(&m_timer, &QTimer::timeout, this, &AppController::requestRefresh);
+    connect(&m_timer, &QTimer::timeout, this, [this] {
+        if (!m_paused)
+            requestRefresh();
+    });
     m_timer.start();
 }
 
@@ -104,7 +127,17 @@ void AppController::selectDatabase(const QString &requestedPath)
         cleaned = QFileInfo(cleaned).absoluteFilePath();
     if (cleaned == m_path)
         return;
+
+    ++m_generation;
     m_path = cleaned;
+    m_paused = false; // explicitly opening a different database resumes sampling
+    m_hasSnapshot = false;
+    m_snapshot = {};
+    m_live.setRows({});
+    m_top.setRows({});
+    m_applications.setRows({});
+    m_endpoints.setRows({});
+    clearSelection();
     m_error.clear();
     m_status = m_path.isEmpty() ? QStringLiteral("Choose an existing schema-v4 Pigeon database")
                                 : QStringLiteral("Opening selected database read-only…");
@@ -116,11 +149,12 @@ void AppController::selectDatabase(const QString &requestedPath)
 
 void AppController::requestRefresh()
 {
-    if (m_path.isEmpty() || m_inFlight)
+    if (m_path.isEmpty() || m_inFlight || m_paused)
         return;
     m_pending = false;
     m_inFlight = true;
     m_activeToken = ++m_nextToken;
+    m_activeGeneration = m_generation;
     emit refreshRequested(m_activeToken, m_path, m_options);
 }
 
@@ -130,9 +164,14 @@ void AppController::acceptResult(quint64 token, const QString &path, bool ok,
     if (token != m_activeToken)
         return;
     m_inFlight = false;
-    if (path != m_path) {
-        // A previous database's worker response may NEVER replace a new choice.
-        requestRefresh();
+    const bool accepted = path == m_path && m_activeGeneration == m_generation && !m_paused;
+    // Queued to the worker before any next refresh; it commits only the accepted
+    // snapshot's rate baselines, in the same order as queued refresh requests.
+    emit finalizeRequested(token, accepted && ok);
+    if (!accepted) {
+        // Never publish a stale read or an obsolete set of filters.
+        if (!m_paused)
+            requestRefresh();
         return;
     }
     if (ok) {
@@ -145,6 +184,7 @@ void AppController::acceptResult(quint64 token, const QString &path, bool ok,
         m_top.setRows(snapshot.top);
         m_applications.setRows(snapshot.applications);
         m_endpoints.setRows(snapshot.endpoints);
+        updateSelection();
     } else {
         // Keep the last good snapshot AND model rows on error.
         m_error = error;
@@ -152,8 +192,174 @@ void AppController::acceptResult(quint64 token, const QString &path, bool ok,
                                  : QStringLiteral("Unable to read database");
     }
     emit stateChanged();
-    if (m_pending)
+    if (m_pending && !m_paused)
         requestRefresh();
+}
+
+} // namespace pigeon
+
+namespace pigeon {
+
+void AppController::optionsChanged()
+{
+    ++m_generation;
+    m_pending = true;
+    emit filtersChanged();
+    if (!m_inFlight && !m_paused)
+        requestRefresh();
+}
+
+void AppController::setSearch(const QString &search)
+{
+    const QString value = search.left(127);
+    if (m_options.search == value)
+        return;
+    m_options.search = value;
+    optionsChanged();
+}
+
+void AppController::setProtocol(int protocol)
+{
+    if ((protocol != 0 && protocol != 6 && protocol != 17) || m_options.protocol == protocol)
+        return;
+    m_options.protocol = protocol;
+    optionsChanged();
+}
+
+void AppController::setFamily(int family)
+{
+    if ((family != 0 && family != 4 && family != 6) || m_options.family == family)
+        return;
+    m_options.family = family;
+    optionsChanged();
+}
+
+void AppController::setRecentSeconds(int seconds)
+{
+    if ((seconds != 0 && seconds != 10 && seconds != 30 && seconds != 120)
+        || m_options.recentSeconds == seconds)
+        return;
+    m_options.recentSeconds = seconds;
+    optionsChanged();
+}
+
+void AppController::setRankingSort(int sort)
+{
+    if (sort < 0 || sort > 2 || m_options.sort == sort)
+        return;
+    m_options.sort = sort;
+    optionsChanged();
+}
+
+void AppController::setLiveSort(int sort)
+{
+    if (sort < 0 || sort > 3 || m_options.liveSort == sort)
+        return;
+    m_options.liveSort = sort;
+    optionsChanged();
+}
+
+void AppController::selectApplication(const QString &application)
+{
+    if (application.toUtf8().size() > 255)
+        return;
+
+    // Clear text search even when the same application is selected again.
+    if (m_options.applicationSelected && m_options.application == application
+        && m_options.search.isEmpty())
+        return;
+    m_options.application = application.isNull() ? QStringLiteral("") : application;
+    m_options.applicationSelected = true;
+    m_options.search.clear();
+    optionsChanged();
+}
+
+void AppController::clearApplication()
+{
+    if (!m_options.applicationSelected)
+        return;
+    m_options.applicationSelected = false;
+    m_options.application.clear();
+    optionsChanged();
+}
+
+void AppController::clearFilters()
+{
+    const bool changed = !m_options.search.isEmpty() || m_options.protocol != 0
+        || m_options.family != 0 || m_options.recentSeconds != 30
+        || m_options.sort != 0 || m_options.liveSort != 0 || m_options.applicationSelected;
+    if (!changed)
+        return;
+    m_options = {};
+    optionsChanged();
+}
+
+void AppController::setPaused(bool paused)
+{
+    if (m_paused == paused)
+        return;
+    m_paused = paused;
+    if (paused) {
+        // Invalidate a read already in flight, freezing both UI and rate baseline.
+        ++m_generation;
+    } else {
+        m_pending = true;
+        if (!m_inFlight)
+            requestRefresh();
+    }
+    emit stateChanged();
+}
+
+void AppController::selectConversation(const QString &identity, bool live)
+{
+    if (m_selectedIdentity == identity && m_selectedLive == live)
+        return;
+    m_selectedIdentity = identity;
+    m_selectedLive = live;
+    m_selectedDetails.clear();
+    updateSelection();
+}
+
+void AppController::clearSelection()
+{
+    if (m_selectedIdentity.isEmpty() && m_selectedDetails.isEmpty())
+        return;
+    m_selectedIdentity.clear();
+    m_selectedDetails.clear();
+    emit selectionChanged();
+}
+
+void AppController::updateSelection()
+{
+    if (m_selectedIdentity.isEmpty())
+        return;
+
+    Conversation row;
+    const bool found = (m_selectedLive ? m_live : m_top).findIdentity(m_selectedIdentity, row);
+    if (!found) {
+        // Keep the last known detail visible, marked as not in the current view.
+        m_selectedDetails.insert(QStringLiteral("inCurrentView"), false);
+    } else {
+        m_selectedDetails = {
+            {QStringLiteral("inCurrentView"), true},
+            {QStringLiteral("application"), row.application.isEmpty() ? QStringLiteral("Unresolved") : row.application},
+            {QStringLiteral("localIp"), row.localIp},
+            {QStringLiteral("remoteIp"), row.remoteIp},
+            {QStringLiteral("remoteName"), row.remoteName},
+            {QStringLiteral("remotePort"), row.remotePort},
+            {QStringLiteral("protocol"), row.protocol},
+            {QStringLiteral("bytesDown"), QString::number(row.bytesIn)},
+            {QStringLiteral("bytesUp"), QString::number(row.bytesOut)},
+            {QStringLiteral("packetsDown"), QString::number(row.packetsIn)},
+            {QStringLiteral("packetsUp"), QString::number(row.packetsOut)},
+            {QStringLiteral("firstSeen"), row.firstSeen},
+            {QStringLiteral("lastSeen"), row.lastSeen},
+            {QStringLiteral("ratesValid"), row.rateValid},
+            {QStringLiteral("rateDown"), row.rateDown},
+            {QStringLiteral("rateUp"), row.rateUp}
+        };
+    }
+    emit selectionChanged();
 }
 
 } // namespace pigeon

@@ -38,7 +38,7 @@ set_source_files_properties(qml/components/SurfaceCard.qml PROPERTIES
 )
 
 foreach(name NavTab MetricCard EmptyState CellText DirectionIcon TrafficChart
-             ConversationTable ApplicationsTable EndpointsTable)
+             ConversationTable ApplicationsTable EndpointsTable FilterBar ScopeCombo ConversationDetails)
     set_source_files_properties(qml/components/${name}.qml PROPERTIES
         QT_RESOURCE_ALIAS components/${name}.qml
     )
@@ -71,6 +71,9 @@ qt_add_qml_module(pigeon-gui
         qml/components/ConversationTable.qml
         qml/components/ApplicationsTable.qml
         qml/components/EndpointsTable.qml
+        qml/components/FilterBar.qml
+        qml/components/ScopeCombo.qml
+        qml/components/ConversationDetails.qml
         qml/pages/OverviewPage.qml
         qml/pages/TrafficPage.qml
         qml/pages/ApplicationsPage.qml
@@ -117,6 +120,22 @@ if(BUILD_TESTING)
     target_include_directories(pigeon-data-tests PRIVATE src)
     target_link_libraries(pigeon-data-tests PRIVATE Qt6::Core Qt6::Sql Qt6::Network Qt6::Test)
     add_test(NAME pigeon-data COMMAND pigeon-data-tests)
+
+    add_executable(pigeon-controller-tests
+        tests/test_controller.cpp
+        src/app/AppController.h
+        src/app/AppController.cpp
+        src/data/Snapshot.h
+        src/data/DatabaseReader.h
+        src/data/DatabaseReader.cpp
+        src/data/RateSampler.h
+        src/data/RateSampler.cpp
+        src/models/Models.h
+        src/models/Models.cpp
+    )
+    target_include_directories(pigeon-controller-tests PRIVATE src)
+    target_link_libraries(pigeon-controller-tests PRIVATE Qt6::Core Qt6::Sql Qt6::Network Qt6::Test)
+    add_test(NAME pigeon-controller COMMAND pigeon-controller-tests)
 
     find_package(Python3 COMPONENTS Interpreter QUIET)
     if(Python3_Interpreter_FOUND)

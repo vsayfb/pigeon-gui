@@ -33,7 +33,7 @@ function protocol(value) {
 function timestamp(seconds) {
     if (!seconds && seconds !== 0)
         return "—";
-    return new Date(Number(seconds) * 1000).toLocaleString(Qt.locale(), Locale.ShortFormat);
+    return Qt.formatDateTime(new Date(Number(seconds) * 1000));
 }
 
 function relative(seconds) {

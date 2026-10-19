@@ -7,6 +7,7 @@ import "../theme/Format.js" as Format
 SurfaceCard {
     id: table
     property var sourceModel: null
+    signal conversationActivated(string identity)
     property bool live: true
     property string emptyTitle: qsTr("No matching conversations")
     property string emptyDetail: qsTr("No rows match the current scope.")
@@ -59,6 +60,15 @@ SurfaceCard {
                     height: parent.height - 45
                     clip: true
                     model: table.sourceModel
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: {
+                        if (list.currentItem)
+                            table.conversationActivated(list.currentItem.identity)
+                    }
+                    Keys.onSpacePressed: {
+                        if (list.currentItem)
+                            table.conversationActivated(list.currentItem.identity)
+                    }
                     boundsBehavior: Flickable.StopAtBounds
                     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                     delegate: Rectangle {
@@ -81,7 +91,18 @@ SurfaceCard {
 
                         width: list.width
                         height: 53
-                        color: index % 2 ? Theme.rowAlternate : Theme.surface
+                        color: readerController.selectedIdentity === row.identity
+                            ? Theme.accentSurface : index % 2 ? Theme.rowAlternate : Theme.surface
+                        border.width: rowHover.hovered ? 1 : 0
+                        border.color: Theme.accent
+                        HoverHandler { id: rowHover }
+                        TapHandler {
+                            onTapped: {
+                                list.currentIndex = row.index
+                                list.forceActiveFocus()
+                                table.conversationActivated(row.identity)
+                            }
+                        }
                         Row {
                             height: parent.height
                             width: parent.width

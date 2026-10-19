@@ -43,6 +43,22 @@ QHash<int, QByteArray> ConversationsModel::roleNames() const
             {BytesDownExactRole, "bytesDownExact"}, {BytesUpExactRole, "bytesUpExact"}};
 }
 
+bool ConversationsModel::findIdentity(const QString &identity, Conversation &row) const
+{
+    // UI keys are encoded hex, so even embedded NULs remain unambiguous.
+    const QByteArray key = QByteArray::fromHex(identity.toLatin1());
+    if (key.isEmpty() || QString::fromLatin1(key.toHex()) != identity)
+        return false;
+
+    for (const Conversation &candidate : m_rows) {
+        if (candidate.key() == key) {
+            row = candidate;
+            return true;
+        }
+    }
+    return false;
+}
+
 QVariant ApplicationsModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size())

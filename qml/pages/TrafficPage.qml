@@ -6,6 +6,7 @@ import Pigeon.Gui 1.0
 Item {
     id: page
     property bool live: true
+    signal conversationActivated()
 
     Flickable {
         id: scroll
@@ -31,8 +32,11 @@ Item {
                     spacing: 6
                     Text {
                         Layout.fillWidth: true
-                        text: page.live ? qsTr("Last 30 seconds · newest 200 matches")
-                                        : qsTr("All recorded data · top 200 by cumulative total")
+                        text: page.live
+                            ? qsTr("%1 · newest 200 matches before rate ranking").arg(
+                                readerController.recentSeconds === 0 ? qsTr("All recorded")
+                                : qsTr("Last %1 seconds").arg(readerController.recentSeconds))
+                            : qsTr("All recorded data · top 200 by cumulative ranking")
                         font.pixelSize: 14
                         font.weight: Font.DemiBold
                         color: Theme.textPrimary
@@ -54,8 +58,12 @@ Item {
                 Layout.preferredHeight: Math.max(440, page.height - 175)
                 sourceModel: page.live ? readerController.liveModel : readerController.topModel
                 live: page.live
+                onConversationActivated: function(identity) {
+                    readerController.selectConversation(identity, page.live)
+                    page.conversationActivated()
+                }
                 emptyDetail: page.live
-                    ? qsTr("No recent packets in the 30-second window. Check Top Traffic for historical conversations.")
+                    ? qsTr("No matching packets in the selected recency window. Try All recorded or Top Traffic.")
                     : qsTr("No stored conversations yet. Open a database containing collector observations.")
             }
 

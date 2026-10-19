@@ -5,6 +5,7 @@ import Pigeon.Gui 1.0
 
 Item {
     id: page
+    signal applicationActivated(string application)
     Flickable {
         id: scroll
         anchors.fill: parent
@@ -30,7 +31,9 @@ Item {
                     spacing: 7
                     Text {
                         Layout.fillWidth: true
-                        text: qsTr("Application ranking · top 200 by total bytes")
+                        text: qsTr("Application ranking · top 200 by cumulative %1").arg(
+                            readerController.rankingSort === 1 ? qsTr("download") :
+                            readerController.rankingSort === 2 ? qsTr("upload") : qsTr("total"))
                         font.pixelSize: 14
                         font.weight: Font.DemiBold
                         color: Theme.textPrimary
@@ -45,14 +48,26 @@ Item {
                 }
             }
 
+            RowLayout {
+                Layout.fillWidth: true
+                Text { text: qsTr("Rank by"); color: Theme.textSecondary; font.pixelSize: 12 }
+                ScopeCombo {
+                    choices: [qsTr("Combined bytes"), qsTr("Downloaded"), qsTr("Uploaded")]
+                    selectedIndex: readerController.rankingSort
+                    caption: qsTr("Application ranking")
+                    onChosen: function(index) { readerController.setRankingSort(index) }
+                }
+            }
+
             ApplicationsTable {
+                onApplicationActivated: function(name) { page.applicationActivated(name) }
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.max(440, page.height - 175)
                 sourceModel: readerController.applicationsModel
             }
             Text {
                 Layout.fillWidth: true
-                text: qsTr("Application drill-down and ranking controls follow in Commit 4.")
+                text: qsTr("Select an application to show only its conversations in Top Traffic. Unresolved is an exact empty-name filter.")
                 color: Theme.textMuted
                 font.pixelSize: 11
                 wrapMode: Text.WordWrap

@@ -20,6 +20,7 @@ Item {
         anchors.rightMargin: cell.inset
         anchors.verticalCenter: parent.verticalCenter
         text: cell.label
+        textFormat: Text.PlainText
         color: cell.ink
         font.pixelSize: 12
         font.weight: cell.prominent ? Font.DemiBold : Font.Normal
