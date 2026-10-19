@@ -1,0 +1,145 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import Pigeon.Gui 1.0
+import "../theme/Format.js" as Format
+
+SurfaceCard {
+    id: table
+    property var sourceModel: null
+    property bool live: true
+    property string emptyTitle: qsTr("No matching conversations")
+    property string emptyDetail: qsTr("No rows match the current scope.")
+
+    readonly property int tableWidth: 1050
+    implicitHeight: 420
+    clip: true
+
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 1
+        spacing: 0
+
+        Flickable {
+            id: horizontal
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            contentWidth: Math.max(width, table.tableWidth)
+            contentHeight: height
+            flickableDirection: Flickable.HorizontalFlick
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
+
+            Column {
+                width: horizontal.contentWidth
+                height: horizontal.height
+                spacing: 0
+
+                Rectangle {
+                    width: parent.width
+                    height: 45
+                    color: Theme.surfaceRaised
+                    radius: 12
+                    Row {
+                        anchors.fill: parent
+                        CellText { width: 133; height: parent.height; label: qsTr("APPLICATION"); ink: Theme.textMuted }
+                        CellText { width: 324; height: parent.height; label: qsTr("REMOTE ENDPOINT"); ink: Theme.textMuted }
+                        CellText { width: 74; height: parent.height; label: qsTr("PROTO"); ink: Theme.textMuted }
+                        CellText { width: 120; height: parent.height; label: table.live ? qsTr("DOWN / SEC") : qsTr("DOWNLOADED"); ink: Theme.textMuted; rightAligned: true }
+                        CellText { width: 120; height: parent.height; label: table.live ? qsTr("UP / SEC") : qsTr("UPLOADED"); ink: Theme.textMuted; rightAligned: true }
+                        CellText { width: 90; height: parent.height; label: qsTr("DIRECTION"); ink: Theme.textMuted }
+                        CellText { width: 175; height: parent.height; label: qsTr("LAST SEEN"); ink: Theme.textMuted }
+                    }
+                }
+
+                ListView {
+                    id: list
+                    width: parent.width
+                    height: parent.height - 45
+                    clip: true
+                    model: table.sourceModel
+                    boundsBehavior: Flickable.StopAtBounds
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    delegate: Rectangle {
+                        id: row
+                        required property string identity
+                        required property string application
+                        required property string remoteIp
+                        required property string remoteName
+                        required property int remotePort
+                        required property int protocol
+                        required property string bytesDownExact
+                        required property string bytesUpExact
+                        required property var packetsDown
+                        required property var packetsUp
+                        required property bool ratesValid
+                        required property real rateDown
+                        required property real rateUp
+                        required property real lastSeen
+                        required property int index
+
+                        width: list.width
+                        height: 53
+                        color: index % 2 ? Theme.rowAlternate : Theme.surface
+                        Row {
+                            height: parent.height
+                            width: parent.width
+                            CellText {
+                                width: 133; height: parent.height
+                                label: row.application.length ? row.application : qsTr("Unresolved")
+                                ink: Theme.textPrimary; prominent: true
+                            }
+                            CellText {
+                                width: 324; height: parent.height
+                                label: Format.endpoint(row.remoteName, row.remoteIp, row.remotePort, row.protocol)
+                                fullText: label + "\n" + qsTr("Observed DNS association, not verified ownership")
+                            }
+                            CellText { width: 74; height: parent.height; label: Format.protocol(row.protocol) }
+                            CellText {
+                                width: 120; height: parent.height; rightAligned: true; ink: Theme.accent
+                                label: table.live ? (row.ratesValid ? Format.speed(row.rateDown, true) : qsTr("Waiting"))
+                                                  : Format.exactSize(row.bytesDownExact)
+                                fullText: table.live ? (row.ratesValid ? label : qsTr("Waiting for a second sample ≥ 1 second later"))
+                                                     : row.bytesDownExact + " B"
+                            }
+                            CellText {
+                                width: 120; height: parent.height; rightAligned: true; ink: Theme.positive
+                                label: table.live ? (row.ratesValid ? Format.speed(row.rateUp, true) : qsTr("Waiting"))
+                                                  : Format.exactSize(row.bytesUpExact)
+                                fullText: table.live ? (row.ratesValid ? label : qsTr("Waiting for a second sample ≥ 1 second later"))
+                                                     : row.bytesUpExact + " B"
+                            }
+                            Item {
+                                width: 90; height: parent.height
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 10
+                                    DirectionIcon { incoming: true; observed: Number(row.packetsDown) > 0 }
+                                    DirectionIcon { incoming: false; observed: Number(row.packetsUp) > 0 }
+                                }
+                                ToolTip.visible: hover.hovered
+                                ToolTip.delay: 600
+                                ToolTip.text: qsTr("Arrows indicate observed packet direction, not connection initiation")
+                                HoverHandler { id: hover }
+                            }
+                            CellText {
+                                width: 175; height: parent.height
+                                label: Format.relative(row.lastSeen)
+                                fullText: Format.timestamp(row.lastSeen)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        EmptyState {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: list.count === 0
+            heading: table.emptyTitle
+            explanation: table.emptyDetail
+        }
+    }
+}

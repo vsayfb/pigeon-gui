@@ -65,6 +65,35 @@ QString AppController::uploadRate() const
                                  : QStringLiteral("Waiting for second sample");
 }
 
+QVariantList AppController::trafficHistory() const
+{
+    QVariantList history;
+    history.reserve(m_snapshot.history.size());
+    for (const RatePoint &point : m_snapshot.history) {
+        history.append(QVariantMap{{QStringLiteral("down"), point.down},
+                                   {QStringLiteral("up"), point.up},
+                                   {QStringLiteral("seconds"), point.elapsedSeconds}});
+    }
+    return history;
+}
+
+QString AppController::lastPacketAge() const
+{
+    if (!m_hasSnapshot || !m_snapshot.hasPackets)
+        return QStringLiteral("—");
+
+    const qint64 seconds = QDateTime::currentSecsSinceEpoch() - m_snapshot.latestPacket;
+    if (seconds < 0)
+        return QStringLiteral("Future packet timestamp");
+    if (seconds < 60)
+        return QStringLiteral("%1s ago").arg(seconds);
+    if (seconds < 3600)
+        return QStringLiteral("%1m ago").arg(seconds / 60);
+    if (seconds < 86400)
+        return QStringLiteral("%1h ago").arg(seconds / 3600);
+    return QStringLiteral("%1d ago").arg(seconds / 86400);
+}
+
 void AppController::selectDatabase(const QString &requestedPath)
 {
     QString cleaned = requestedPath.trimmed();

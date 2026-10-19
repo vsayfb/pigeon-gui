@@ -37,6 +37,23 @@ set_source_files_properties(qml/components/SurfaceCard.qml PROPERTIES
     QT_RESOURCE_ALIAS SurfaceCard.qml
 )
 
+foreach(name NavTab MetricCard EmptyState CellText DirectionIcon TrafficChart
+             ConversationTable ApplicationsTable EndpointsTable)
+    set_source_files_properties(qml/components/${name}.qml PROPERTIES
+        QT_RESOURCE_ALIAS components/${name}.qml
+    )
+endforeach()
+
+foreach(name OverviewPage TrafficPage ApplicationsPage EndpointsPage)
+    set_source_files_properties(qml/pages/${name}.qml PROPERTIES
+        QT_RESOURCE_ALIAS pages/${name}.qml
+    )
+endforeach()
+
+set_source_files_properties(qml/theme/Format.js PROPERTIES
+    QT_RESOURCE_ALIAS theme/Format.js
+)
+
 qt_add_qml_module(pigeon-gui
     URI Pigeon.Gui
     VERSION 1.0
@@ -45,6 +62,21 @@ qt_add_qml_module(pigeon-gui
         qml/Main.qml
         qml/theme/Theme.qml
         qml/components/SurfaceCard.qml
+        qml/components/NavTab.qml
+        qml/components/MetricCard.qml
+        qml/components/EmptyState.qml
+        qml/components/CellText.qml
+        qml/components/DirectionIcon.qml
+        qml/components/TrafficChart.qml
+        qml/components/ConversationTable.qml
+        qml/components/ApplicationsTable.qml
+        qml/components/EndpointsTable.qml
+        qml/pages/OverviewPage.qml
+        qml/pages/TrafficPage.qml
+        qml/pages/ApplicationsPage.qml
+        qml/pages/EndpointsPage.qml
+    RESOURCES
+        qml/theme/Format.js
 )
 
 target_link_libraries(pigeon-gui PRIVATE
@@ -85,4 +117,10 @@ if(BUILD_TESTING)
     target_include_directories(pigeon-data-tests PRIVATE src)
     target_link_libraries(pigeon-data-tests PRIVATE Qt6::Core Qt6::Sql Qt6::Network Qt6::Test)
     add_test(NAME pigeon-data COMMAND pigeon-data-tests)
+
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME pigeon-gui-fixture
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/test_demo_db.py)
+    endif()
 endif()

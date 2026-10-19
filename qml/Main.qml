@@ -2,332 +2,291 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Pigeon.Gui 1.0
+import "pages"
 
 ApplicationWindow {
     id: root
 
-    width: 1040
-    height: 700
+    width: 1240
+    height: 780
     minimumWidth: 620
-    minimumHeight: 480
+    minimumHeight: 490
     visible: true
-    title: qsTr("Pigeon")
+    title: qsTr("Pigeon GUI")
     color: Theme.background
 
-    readonly property bool compact: width < 820
+    property int currentPage: 0
+    readonly property bool compact: width < 940
+    readonly property var titles: [qsTr("Overview"), qsTr("Live Traffic"),
+                                   qsTr("Top Traffic"), qsTr("Applications"), qsTr("New Endpoints")]
+    readonly property var symbols: ["▦", "↓↑", "≡", "▤", "◎"]
 
     RowLayout {
         anchors.fill: parent
         spacing: 0
 
         Rectangle {
-            Layout.preferredWidth: 232
+            Layout.preferredWidth: 218
             Layout.fillHeight: true
             visible: !root.compact
             color: Theme.sidebar
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 24
+                anchors.margins: 20
                 spacing: 0
 
                 RowLayout {
-                    spacing: 12
-
+                    spacing: 10
                     Rectangle {
-                        Layout.preferredWidth: 36
-                        Layout.preferredHeight: 36
-                        radius: 10
+                        Layout.preferredWidth: 38
+                        Layout.preferredHeight: 38
+                        radius: 11
                         color: Theme.accentSurface
-
                         Text {
                             anchors.centerIn: parent
                             text: "P"
-                            font.pixelSize: 22
+                            font.pixelSize: 23
                             font.bold: true
                             color: Theme.accent
                         }
                     }
-
                     ColumnLayout {
-                        spacing: 2
-
+                        spacing: 1
                         Text {
-                            text: qsTr("Pigeon")
-                            color: Theme.textPrimary
+                            text: "Pigeon"
                             font.pixelSize: 20
                             font.weight: Font.DemiBold
+                            color: Theme.textPrimary
                         }
-
                         Text {
                             text: qsTr("NETWORK VIEWER")
-                            color: Theme.textMuted
                             font.pixelSize: 10
-                            font.letterSpacing: 1.2
+                            font.letterSpacing: 1.1
+                            color: Theme.textMuted
                         }
                     }
                 }
 
-                Item { Layout.preferredHeight: 52 }
-
+                Item { Layout.preferredHeight: 45 }
                 Text {
                     text: qsTr("WORKSPACE")
-                    color: Theme.textMuted
                     font.pixelSize: 11
-                    font.letterSpacing: 1.2
+                    font.letterSpacing: 1
+                    color: Theme.textMuted
                 }
-
-                Item { Layout.preferredHeight: 14 }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 43
-                    color: Theme.accentSurface
-                    radius: 9
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left
-                        anchors.leftMargin: 16
-                        text: qsTr("Overview")
-                        font.pixelSize: 14
-                        font.weight: Font.DemiBold
-                        color: Theme.accent
+                Item { Layout.preferredHeight: 10 }
+                Repeater {
+                    model: 5
+                    NavTab {
+                        required property int index
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        text: root.titles[index]
+                        symbol: root.symbols[index]
+                        selected: root.currentPage === index
+                        onClicked: root.currentPage = index
                     }
                 }
-
-                Item { Layout.preferredHeight: 22 }
-
-                Text {
-                    Layout.fillWidth: true
-                    text: qsTr("Read-only SQLite snapshot viewer. Detailed traffic panels follow in the next slice.")
-                    wrapMode: Text.WordWrap
-                    color: Theme.textMuted
-                    font.pixelSize: 12
-                    lineHeight: 1.4
-                }
-
                 Item { Layout.fillHeight: true }
-
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
                     color: Theme.border
                 }
-
-                Item { Layout.preferredHeight: 16 }
-
+                Item { Layout.preferredHeight: 15 }
                 Text {
-                    text: qsTr("Standalone desktop viewer")
+                    Layout.fillWidth: true
+                    text: qsTr("READ-ONLY · SQLITE V4")
                     font.pixelSize: 11
                     color: Theme.textSecondary
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("Independent of collector")
+                    font.pixelSize: 11
+                    color: Theme.textMuted
                 }
             }
         }
 
-        Flickable {
-            id: workspace
-
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            contentWidth: width
-            contentHeight: content.implicitHeight + 64
-            boundsBehavior: Flickable.StopAtBounds
-
-            ScrollBar.vertical: ScrollBar { }
+            Layout.minimumWidth: 0
+            spacing: 0
 
             ColumnLayout {
-                id: content
-
-                x: root.compact ? 24 : 40
-                y: 32
-                width: workspace.width - x * 2
-                spacing: 24
+                Layout.fillWidth: true
+                Layout.leftMargin: root.compact ? 18 : 28
+                Layout.rightMargin: root.compact ? 18 : 28
+                Layout.topMargin: 19
+                Layout.bottomMargin: 13
+                spacing: 10
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 16
-
+                    spacing: 12
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 3
-
+                        spacing: 2
                         Text {
                             visible: root.compact
                             text: qsTr("PIGEON")
-                            color: Theme.accent
                             font.pixelSize: 11
                             font.bold: true
-                            font.letterSpacing: 1.3
+                            font.letterSpacing: 1.4
+                            color: Theme.accent
                         }
-
                         Text {
-                            text: qsTr("Overview")
-                            color: Theme.textPrimary
-                            font.pixelSize: 26
+                            text: root.titles[root.currentPage]
+                            font.pixelSize: root.compact ? 23 : 27
                             font.weight: Font.DemiBold
+                            color: Theme.textPrimary
                         }
                     }
-
                     Rectangle {
-                        Layout.preferredWidth: 110
-                        Layout.preferredHeight: 30
-                        color: Theme.accentSurface
+                        width: 106
+                        height: 30
                         radius: 15
-
+                        color: readerController.error.length > 0 ? "#493039" : Theme.accentSurface
                         Text {
                             anchors.centerIn: parent
-                            text: readerController.hasSnapshot ? qsTr("Read-only") : qsTr("Connect")
-                            color: Theme.accent
+                            text: readerController.error.length > 0 ? qsTr("Read failed")
+                                : readerController.hasSnapshot ? qsTr("Read-only") : qsTr("No data")
+                            color: readerController.error.length > 0 ? Theme.danger : Theme.accent
                             font.pixelSize: 12
                             font.weight: Font.Medium
                         }
                     }
                 }
 
-                SurfaceCard {
+                RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: root.compact ? 505 : 450
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: root.compact ? 22 : 30
-                        spacing: 13
-
-                        Rectangle {
-                            Layout.preferredWidth: 78
-                            Layout.preferredHeight: 30
+                    spacing: 9
+                    TextField {
+                        id: databasePath
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 140
+                        text: readerController.databasePath
+                        placeholderText: qsTr("Existing Pigeon SQLite database path")
+                        selectByMouse: true
+                        color: Theme.textPrimary
+                        placeholderTextColor: Theme.textMuted
+                        background: Rectangle {
                             radius: 8
-                            color: Theme.accentSurface
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "SQLite"
-                                color: Theme.accent
-                                font.pixelSize: 12
-                                font.weight: Font.DemiBold
-                            }
+                            color: Theme.surface
+                            border.color: databasePath.activeFocus ? Theme.accent : Theme.border
                         }
-
-                        Item { Layout.preferredHeight: 2 }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: qsTr("Open an existing Pigeon database")
-                            color: Theme.textPrimary
-                            font.pixelSize: root.compact ? 21 : 24
+                        onAccepted: readerController.selectDatabase(text)
+                        Accessible.name: qsTr("Database path")
+                    }
+                    Button {
+                        text: qsTr("Open")
+                        contentItem: Text {
+                            text: parent.text
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            color: Theme.background
                             font.weight: Font.DemiBold
-                            wrapMode: Text.WordWrap
                         }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: qsTr("Choose a schema-v4 SQLite file. The reader never creates or migrates databases. Snapshots refresh about once per second.")
-                            color: Theme.textSecondary
-                            font.pixelSize: 14
-                            wrapMode: Text.WordWrap
-                            lineHeight: 1.35
+                        background: Rectangle {
+                            radius: 8
+                            color: Theme.accent
                         }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-
-                            TextField {
-                                id: databaseField
-                                Layout.fillWidth: true
-                                placeholderText: qsTr("/path/to/pigeon.db")
-                                text: readerController.databasePath
-                                selectByMouse: true
-                                onAccepted: readerController.selectDatabase(text)
-                                Accessible.name: qsTr("SQLite database file path")
-                            }
-
-                            Button {
-                                text: qsTr("Open")
-                                onClicked: readerController.selectDatabase(databaseField.text)
-                                Accessible.name: qsTr("Open existing database read-only")
-                            }
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: readerController.status
-                            color: Theme.textSecondary
-                            font.pixelSize: 12
-                            wrapMode: Text.WrapAnywhere
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            visible: readerController.error.length > 0
-                            text: readerController.error
-                            color: "#F9A8A8"
-                            font.pixelSize: 12
-                            wrapMode: Text.WrapAnywhere
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            visible: readerController.hasSnapshot
-                            text: qsTr("Conversations: %1  ·  Remote IPs: %2")
-                                  .arg(readerController.conversationCount)
-                                  .arg(readerController.remoteIpCount)
-                            color: Theme.textPrimary
-                            font.pixelSize: 14
-                            wrapMode: Text.WordWrap
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            visible: readerController.hasSnapshot
-                            text: qsTr("Downloaded: %1 B  ·  Uploaded: %2 B")
-                                  .arg(readerController.downloaded)
-                                  .arg(readerController.uploaded)
-                            color: Theme.textPrimary
-                            font.pixelSize: 12
-                            wrapMode: Text.WordWrap
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            visible: readerController.hasSnapshot
-                            text: qsTr("Rates (B/s): ↓ %1  ·  ↑ %2")
-                                  .arg(readerController.downloadRate)
-                                  .arg(readerController.uploadRate)
-                            color: Theme.textPrimary
-                            font.pixelSize: 12
-                            wrapMode: Text.WordWrap
-                        }
-
-                        Item { Layout.fillHeight: true }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 1
-                            color: Theme.border
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: qsTr("No collector or capture privileges required")
-                            color: Theme.positive
-                            font.pixelSize: 12
-                            wrapMode: Text.WordWrap
-                        }
+                        Accessible.name: qsTr("Open existing database read-only")
+                        onClicked: readerController.selectDatabase(databasePath.text)
                     }
                 }
 
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("Snapshot data is read-only. Live, Top, Applications and New Endpoints tables will be added in the next reviewed slice.")
+                    text: readerController.status
                     color: Theme.textMuted
-                    font.pixelSize: 12
-                    wrapMode: Text.WordWrap
-                    lineHeight: 1.4
+                    font.pixelSize: 11
+                    elide: Text.ElideMiddle
+                    ToolTip.visible: statusHover.hovered
+                    ToolTip.text: text
+                    HoverHandler { id: statusHover }
                 }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    visible: readerController.error.length > 0
+                    implicitHeight: errorLabel.implicitHeight + 20
+                    radius: 9
+                    color: "#452A37"
+                    border.color: "#A66070"
+                    Text {
+                        id: errorLabel
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.margins: 10
+                        color: Theme.danger
+                        font.pixelSize: 12
+                        wrapMode: Text.WrapAnywhere
+                        text: readerController.error
+                    }
+                }
+
+                // On narrow windows navigation remains keyboard-accessible.
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: root.compact
+                    spacing: 2
+                    Repeater {
+                        model: 5
+                        NavTab {
+                            required property int index
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredWidth: 110
+                            compact: true
+                            text: root.titles[index]
+                            symbol: ""
+                            selected: root.currentPage === index
+                            onClicked: root.currentPage = index
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.border
+            }
+
+            Loader {
+                id: body
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.minimumWidth: 0
+                Layout.leftMargin: root.compact ? 14 : 24
+                Layout.rightMargin: root.compact ? 14 : 24
+                Layout.topMargin: 17
+                visible: readerController.hasSnapshot
+                active: visible
+                sourceComponent: root.currentPage === 0 ? overviewComponent
+                    : root.currentPage === 1 ? liveComponent
+                    : root.currentPage === 2 ? topComponent
+                    : root.currentPage === 3 ? applicationsComponent : endpointsComponent
+            }
+
+            EmptyState {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: !readerController.hasSnapshot
+                heading: qsTr("Open a Pigeon database")
+                explanation: qsTr("Select an existing schema-v4 SQLite file to view network activity. No capture privileges are needed.")
             }
         }
     }
+
+    Component { id: overviewComponent; OverviewPage { } }
+    Component { id: liveComponent; TrafficPage { live: true } }
+    Component { id: topComponent; TrafficPage { live: false } }
+    Component { id: applicationsComponent; ApplicationsPage { } }
+    Component { id: endpointsComponent; EndpointsPage { } }
 }

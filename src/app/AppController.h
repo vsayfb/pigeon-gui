@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QThread>
 #include <QTimer>
+#include <QVariant>
 
 namespace pigeon {
 
@@ -39,6 +40,11 @@ class AppController : public QObject {
     Q_PROPERTY(QString uploaded READ uploaded NOTIFY stateChanged)
     Q_PROPERTY(QString downloadRate READ downloadRate NOTIFY stateChanged)
     Q_PROPERTY(QString uploadRate READ uploadRate NOTIFY stateChanged)
+    Q_PROPERTY(bool ratesMeasured READ ratesMeasured NOTIFY stateChanged)
+    Q_PROPERTY(double downloadRateValue READ downloadRateValue NOTIFY stateChanged)
+    Q_PROPERTY(double uploadRateValue READ uploadRateValue NOTIFY stateChanged)
+    Q_PROPERTY(QVariantList trafficHistory READ trafficHistory NOTIFY stateChanged)
+    Q_PROPERTY(QString lastPacketAge READ lastPacketAge NOTIFY stateChanged)
     Q_PROPERTY(QAbstractItemModel *liveModel READ liveModel CONSTANT)
     Q_PROPERTY(QAbstractItemModel *topModel READ topModel CONSTANT)
     Q_PROPERTY(QAbstractItemModel *applicationsModel READ applicationsModel CONSTANT)
@@ -57,6 +63,11 @@ public:
     QString uploaded() const { return m_snapshot.exactUp.decimal(); }
     QString downloadRate() const;
     QString uploadRate() const;
+    bool ratesMeasured() const { return m_snapshot.ratesValid; }
+    double downloadRateValue() const { return m_snapshot.rateDown; }
+    double uploadRateValue() const { return m_snapshot.rateUp; }
+    QVariantList trafficHistory() const;
+    QString lastPacketAge() const;
     QAbstractItemModel *liveModel() { return &m_live; }
     QAbstractItemModel *topModel() { return &m_top; }
     QAbstractItemModel *applicationsModel() { return &m_applications; }

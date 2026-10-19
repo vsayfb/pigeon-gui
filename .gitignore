@@ -53,3 +53,7 @@ _autogen/
 *.log
 .DS_Store
 Thumbs.db
+
+# Fixture test Python caches
+__pycache__/
+*.py[cod]
