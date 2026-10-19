@@ -81,6 +81,7 @@ private slots:
     void failedReadDoesNotModifySnapshot();
     void stableModelIndexes();
     void boundedRowHistory();
+    void icmpVersionFiveAndFilters();
 };
 
 void DataTests::exactWideIntegerFormatting()
@@ -256,6 +257,38 @@ void DataTests::boundedRowHistory()
     snapshot.live = {row};
     sampler.sample(snapshot, 38);
     QVERIFY(snapshot.live.first().rateHistory.isEmpty());
+}
+
+void DataTests::icmpVersionFiveAndFilters()
+{
+    QTemporaryDir directory;
+    const QString path = createFixture(directory.filePath(QStringLiteral("icmp.db")));
+    QVERIFY(!path.isEmpty());
+    QVERIFY(execute(path, {
+        QStringLiteral("PRAGMA user_version=5"),
+        QStringLiteral("INSERT INTO conversations VALUES(x'0a000001',x'08080808',0,1,1,1,4,4,10,95,NULL,'')"),
+        QStringLiteral("INSERT INTO conversations VALUES(x'20010db8000000000000000000000001',"
+                       "x'20010db8000000000000000000000002',0,58,1,1,4,4,10,95,NULL,'')")
+    }));
+
+    DatabaseReader reader;
+    ReadOptions options;
+    Snapshot snapshot;
+    QString error;
+    QVERIFY2(reader.read(path, options, 100, snapshot, error), qPrintable(error));
+    QCOMPARE(snapshot.conversations, quint64(5));
+    options.protocol = 1;
+    QVERIFY2(reader.read(path, options, 100, snapshot, error), qPrintable(error));
+    QCOMPARE(snapshot.live.size(), 1);
+    QCOMPARE(snapshot.live.first().protocol, 1);
+    QCOMPARE(snapshot.live.first().remotePort, 0);
+    options.protocol = 58;
+    QVERIFY2(reader.read(path, options, 100, snapshot, error), qPrintable(error));
+    QCOMPARE(snapshot.live.size(), 1);
+    QCOMPARE(snapshot.top.first().protocol, 58);
+    QVERIFY(execute(path, {QStringLiteral("UPDATE conversations SET remote_port=1 WHERE protocol=58")}));
+    QVERIFY(!reader.read(path, options, 100, snapshot, error));
+    QCOMPARE(snapshot.top.first().remotePort, 0); // Failed reads preserve the last snapshot.
 }
 
 void DataTests::failedReadDoesNotModifySnapshot()

@@ -27,7 +27,12 @@ function speed(value, measured) {
 }
 
 function protocol(value) {
-    return value === 6 ? "TCP" : value === 17 ? "UDP" : String(value);
+    return value === 1 ? "ICMP" : value === 58 ? "ICMPv6"
+        : value === 6 ? "TCP" : value === 17 ? "UDP" : String(value);
+}
+
+function hasPorts(value) {
+    return value === 6 || value === 17;
 }
 
 function timestamp(seconds) {
@@ -51,6 +56,6 @@ function endpoint(name, ip, port, protocolNumber) {
     // Observed DNS name is an association, not a verified owner.
     var address = ip.indexOf(":") >= 0 ? "[" + ip + "]" : ip;
     var host = name ? name + " → " + address : address;
-    if (port === undefined || port === null) return host;
+    if (port === undefined || port === null || !hasPorts(protocolNumber)) return host + " · " + protocol(protocolNumber);
     return host + ":" + port + " · " + protocol(protocolNumber);
 }

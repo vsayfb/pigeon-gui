@@ -64,7 +64,7 @@ struct Counter128 {
 
 struct ReadOptions {
     QString search;
-    int protocol = 0;       // 0 = all, 6 = TCP, 17 = UDP
+    int protocol = 0;       // 0 = all, 1 = ICMP, 6 = TCP, 17 = UDP, 58 = ICMPv6
     int family = 0;         // 0 = all, 4 = IPv4, 6 = IPv6
     int recentSeconds = 30; // 0 = all recorded
     int sort = 0;           // 0 = total, 1 = download, 2 = upload

@@ -37,3 +37,8 @@ QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software ./build/pigeon-gui \
 Use `--preview-page 0` through `4` and `--preview-width 700` for other views and
 narrow layouts. `--preview-dark` switches themes; `--preview-delay 6500` allows
 more live samples before rendering. Normal startup does not write a screenshot.
+
+ICMP and ICMPv6 conversations are supported in collector schema v5. The GUI
+continues to read schema v4 too. Protocol filters include both control protocols;
+port cells show a dash because ICMP has no ports. These rows have no attributed
+application. The collector performs migration; the GUI remains read-only.

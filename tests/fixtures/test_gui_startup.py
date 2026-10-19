@@ -4,6 +4,7 @@
 import os
 from pathlib import Path
 import subprocess
+import sqlite3
 import sys
 import tempfile
 
@@ -35,6 +36,11 @@ def main():
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen", QT_QUICK_BACKEND="software")
     with tempfile.TemporaryDirectory(prefix="pigeon-qml-test-") as tmp:
         database = create(Path(tmp) / "fixture.db")
+        check([executable, "--check-qml", "--database", str(database)], env)
+        with sqlite3.connect(database) as db:
+            db.execute("PRAGMA user_version=5")
+            db.execute("INSERT INTO conversations VALUES(x'0a000002',x'08080808',0,1,1,1,4,4,strftime('%s','now'),strftime('%s','now'),NULL,'')")
+            db.execute("INSERT INTO conversations VALUES(x'20010db8000000000000000000000010',x'20010db8000000000000000000000042',0,58,1,1,4,4,strftime('%s','now'),strftime('%s','now'),NULL,'')")
         check([executable, "--check-qml", "--database", str(database)], env)
         check([executable, "--check-qml"], env)
 

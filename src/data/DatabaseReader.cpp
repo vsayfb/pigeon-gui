@@ -65,7 +65,7 @@ bool matches(const QString &needle, const Conversation &row)
 
 bool validOptions(const ReadOptions &o)
 {
-    return (o.protocol == 0 || o.protocol == 6 || o.protocol == 17)
+    return (o.protocol == 0 || o.protocol == 6 || o.protocol == 17 || o.protocol == 1 || o.protocol == 58)
         && (o.family == 0 || o.family == 4 || o.family == 6)
         && o.recentSeconds >= 0 && o.sort >= 0 && o.sort <= 2
         && o.liveSort >= 0 && o.liveSort <= 3
@@ -97,8 +97,8 @@ bool DatabaseReader::checkSchema(QString &error)
         error = queryError(version, QStringLiteral("Read schema version"));
         return false;
     }
-    if (version.value(0).toInt() != 4) {
-        error = QStringLiteral("Schema version 4 required; use the collector to migrate the database");
+    if (version.value(0).toInt() != 4 && version.value(0).toInt() != 5) {
+        error = QStringLiteral("Schema version 4 or 5 required; use the collector to migrate the database");
         return false;
     }
     version.finish();
@@ -325,7 +325,7 @@ bool DatabaseReader::readConversations(QVector<Conversation> &rows, const ReadOp
         row.remotePort = q.value(2).toInt(&portOk);
         row.protocol = q.value(3).toInt(&protoOk);
         if (!portOk || row.remotePort < 0 || row.remotePort > 65535
-            || !protoOk || (row.protocol != 6 && row.protocol != 17)
+            || !protoOk || (row.protocol != 6 && row.protocol != 17 && row.protocol != 1 && row.protocol != 58)
             || !nonnegative(q, 4, row.packetsOut) || !nonnegative(q, 5, row.packetsIn)
             || !nonnegative(q, 6, row.bytesOut) || !nonnegative(q, 7, row.bytesIn)) {
             error = QStringLiteral("Invalid conversation counters, protocol or port");
@@ -335,7 +335,11 @@ bool DatabaseReader::readConversations(QVector<Conversation> &rows, const ReadOp
         row.lastSeen = q.value(9).toLongLong();
         row.remoteName = q.value(10).toString();
         row.application = q.value(11).toString();
-        if (row.firstSeen > row.lastSeen || row.application.toUtf8().size() > 255) {
+        const bool invalidControl = (row.protocol == 1 || row.protocol == 58)
+            && (row.remotePort != 0 || !row.application.isEmpty()
+                || row.localAddress.size() != (row.protocol == 1 ? 4 : 16));
+
+        if (invalidControl || row.firstSeen > row.lastSeen || row.application.toUtf8().size() > 255) {
             error = QStringLiteral("Invalid conversation identity or timestamps");
             return false;
         }

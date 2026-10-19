@@ -142,9 +142,9 @@ SurfaceCard {
                             CellText {
                                 width: table.ipWidth; height: parent.height
                                 label: row.remoteIp
-                                fullText: row.remoteIp + "\n" + qsTr("Remote port: %1").arg(row.remotePort)
+                                fullText: row.remoteIp + (Format.hasPorts(row.protocol) ? "\n" + qsTr("Remote port: %1").arg(row.remotePort) : "")
                             }
-                            CellText { width: 55; height: parent.height; label: String(row.remotePort) }
+                            CellText { width: 55; height: parent.height; label: Format.hasPorts(row.protocol) ? String(row.remotePort) : "—" }
                             CellText { width: 75; height: parent.height; label: Format.protocol(row.protocol) }
                             CellText {
                                 width: 115; height: parent.height; rightAligned: true; ink: Theme.download

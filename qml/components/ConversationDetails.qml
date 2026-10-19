@@ -69,7 +69,7 @@ Drawer {
                     [qsTr("Observed name"), parent.details.remoteName || qsTr("None observed")],
                     [qsTr("Remote IP"), parent.details.remoteIp || "—"],
                     [qsTr("Local IP"), parent.details.localIp || "—"],
-                    [qsTr("Remote port"), String(parent.details.remotePort === undefined ? "—" : parent.details.remotePort)],
+                    [qsTr("Remote port"), !Format.hasPorts(parent.details.protocol) || parent.details.remotePort === undefined ? "—" : String(parent.details.remotePort)],
                     [qsTr("Protocol"), Format.protocol(parent.details.protocol)],
                     [qsTr("Downloaded payload"), (parent.details.bytesDown || "0") + " B"],
                     [qsTr("Uploaded payload"), (parent.details.bytesUp || "0") + " B"],

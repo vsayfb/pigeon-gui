@@ -42,7 +42,7 @@ Item {
             Text {
                 Layout.fillWidth: true
                 text: page.live ? qsTr("Recent conversations · newest 200 matches before rate ranking")
-                    : qsTr("Top 200 conversations · all recorded transport-payload totals")
+                    : qsTr("Top 200 conversations · all recorded protocol-payload totals")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.textPixels(11)
             }

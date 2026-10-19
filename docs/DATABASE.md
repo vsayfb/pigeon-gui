@@ -2,12 +2,11 @@
 
 This document records the **collector-owned** persistence contract used by the
 GUI reader. Its authority is the collector reference's
-`docs/SCHEMA.md` and `src/store/schema.h` at commit
-`b4cbca6`. **Slice 2 implements read-only SQL snapshots and transient rates.**
+`docs/SCHEMA.md` and `src/store/schema.h`. The reader supports schema v4 and v5.
 
 ## File ownership
 
-The collector writes the SQLite database; the GUI is a reader. The GUI must open an **existing** file read-only, verify `PRAGMA user_version = 4`,
+The collector writes the SQLite database; the GUI is a reader. The GUI must open an **existing** file read-only, verify `PRAGMA user_version` is 4 or 5,
 and reject other versions or missing tables without creating, migrating, or
 modifying any data. The GUI must not require collector source or capture
 privileges. The collector may use SQLite WAL mode, so readers must tolerate
@@ -26,11 +25,11 @@ composite primary key is:
 | --- | --- | --- |
 | `us_ip` | BLOB | Local network-order IPv4 (4 bytes) or IPv6 (16 bytes) |
 | `remote_ip` | BLOB | Remote address, same family/byte length as `us_ip` |
-| `remote_port` | INTEGER | Remote port, 0–65535 |
-| `protocol` | INTEGER | TCP = 6, UDP = 17 |
+| `remote_port` | INTEGER | Remote port, 0–65535; zero sentinel for ICMP |
+| `protocol` | INTEGER | ICMP = 1, TCP = 6, UDP = 17, ICMPv6 = 58 |
 | `application` | TEXT | Executable basename, max 255 bytes; empty means unresolved |
 | `packets_out`, `packets_in` | INTEGER | Cumulative directional packet counts |
-| `bytes_out`, `bytes_in` | INTEGER | Cumulative directional **transport payload** bytes |
+| `bytes_out`, `bytes_in` | INTEGER | Cumulative directional **protocol payload** bytes |
 | `first_seen`, `last_seen` | INTEGER | First/last observations, Unix seconds |
 | `remote_name` | TEXT or NULL | Optional historical DNS association |
 
@@ -95,3 +94,14 @@ rows show waiting until two successful reads at least one second apart.
 Failed reads leave baselines unchanged; subsecond reads retain previous
 estimates; counter decreases, clock regression and lifetime changes reset
 baselines. The ring buffer contains at most 60 actual rate samples.
+
+## Schema v5 control traffic
+
+ICMP (1) rows use IPv4 addresses and ICMPv6 (58) rows use IPv6 addresses. Both
+use remote_port=0 and application=''. Port zero is a sentinel: the UI shows a
+dash. These are peer observations, not established connections. The collector
+uses outer source/destination addresses for errors; quoted packets do not imply
+additional connections or process ownership. Byte counts exclude the decoded
+ICMP header and can include the quoted packet. The reader validates control-row
+family, empty application and zero port. Local discovery/control exclusions are
+owned by the collector. Existing v4 files remain supported without migration.

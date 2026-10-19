@@ -100,7 +100,7 @@ ApplicationWindow {
                 Item { Layout.preferredHeight: 15 }
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("SQLite v4 · read-only")
+                    text: qsTr("SQLite · read-only")
                     font.pixelSize: Theme.textPixels(11)
                     color: Theme.textSecondary
                 }

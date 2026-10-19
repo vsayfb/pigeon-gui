@@ -85,9 +85,9 @@ SurfaceCard {
             ScopeCombo {
                 visible: bar.page === 1 || bar.page === 2
                 caption: qsTr("Protocol")
-                choices: [qsTr("TCP + UDP"), qsTr("TCP"), qsTr("UDP")]
-                selectedIndex: readerController.protocol === 6 ? 1 : readerController.protocol === 17 ? 2 : 0
-                onChosen: function(index) { readerController.setProtocol(index === 1 ? 6 : index === 2 ? 17 : 0) }
+                choices: [qsTr("All protocols"), qsTr("TCP"), qsTr("UDP"), qsTr("ICMP"), qsTr("ICMPv6")]
+                selectedIndex: [0, 6, 17, 1, 58].indexOf(readerController.protocol)
+                onChosen: function(index) { readerController.setProtocol([0, 6, 17, 1, 58][index]) }
             }
             ScopeCombo {
                 visible: bar.page === 1
