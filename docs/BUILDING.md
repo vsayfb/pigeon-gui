@@ -2,46 +2,47 @@
 
 ## Requirements
 
-- CMake 3.21+
-- A compiler with C++17 support (GCC, Clang or MSVC)
-- Qt 6.4+ with the `Quick` and `QuickControls2` CMake packages and QML runtime
+- CMake 3.21+, a C++17 compiler, and Qt 6.4 or newer
+- Qt modules: Quick, Quick Controls 2, SQL (including the QSQLITE driver), Network
+- Qt Test (normally part of the Qt Base development package) when building tests
 
-Qt 6.4 is an initial compatibility target, **not yet build-verified**. The GUI
-build has no dependency on the Linux collector, libpcap or ncurses.
+On Debian/Ubuntu, a typical development setup is `qt6-base-dev`,
+`qt6-declarative-dev`, and `libqt6sql6-sqlite`. QML Quick Controls must also
+be available at runtime. The GUI never links to or launches the collector.
 
-## Configure and build
+## Build, test, run
 
 ```sh
 cmake -S . -B build
-cmake --build build
+cmake --build build -j
+ctest --test-dir build --output-on-failure
+./build/pigeon-gui --database /absolute/path/to/existing-pigeon.db
 ```
 
-If Qt is installed outside the default CMake search paths, select the Qt
-installation explicitly (adapt the path to your machine):
+Alternatively, launch without `--database` and enter a database path in the
+window. Only an **existing** schema-v4 SQLite file is accepted. Failed reads
+show an error while retaining the most recent good snapshot. The app may run
+without a database; no database is created by starting it.
+
+If Qt lives outside the normal CMake search path:
 
 ```sh
 cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/<kit>
-cmake --build build
 ```
 
-On Windows, use a Qt build matching the compiler/architecture of your CMake
-kit (for example, MSVC or MinGW). Run the executable with a correctly
-configured Qt environment or use `windeployqt` for a portable bundle.
+Use `-DBUILD_TESTING=OFF` to skip the Qt Test dependency; this does not disable
+runtime SQLite access. Qt SQL must have the `QSQLITE` driver installed.
 
-On macOS, use a matching Qt kit; the executable is in a `.app` bundle. Use
-`macdeployqt` for a standalone deployed application bundle.
+On Windows, select a Qt kit matching your compiler (MSVC/MinGW); `windeployqt`
+helps bundle the platform/SQL/QML plugins. On macOS use the matching Qt kit and
+`macdeployqt`; the target is a `.app` bundle. Linux requires Qt's xcb or
+Wayland platform plugin and Quick Controls runtime. Deployment validation and
+packaging remain follow-up work.
 
-On Linux, install or deploy the matching Qt QML modules and a platform plugin
-(for example `xcb` or `wayland`). Launch the generated `pigeon-gui` executable.
+## Slice-2 test coverage
 
-Deployment, signing and distribution are intentionally outside this first
-slice. The Qt SDK and its QML modules must be available at runtime.
-
-## Validation status
-
-No GUI test suite exists in slice 1. The minimum acceptance smoke test on a
-machine with Qt installed is to configure, build, open the window, resize it
-across 820px, and close it. The shell must exit without database or collector
-access. No Linux, macOS or Windows launch has been verified yet.
-
-Database reader tests and `ctest` integration are planned for slice 2.
+The `pigeon-data` CTest target constructs disposable schema-v4 SQLite fixtures,
+including IPv4/IPv6 addresses, unresolved applications, integers greater than
+2^53, rate resets, and a stable-model-index check. Tests never touch a collector
+or an actual capture database. The GUI is still a foundation: the four data
+models are not displayed as complete tables until the next reviewed slice.

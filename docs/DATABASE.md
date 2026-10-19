@@ -1,14 +1,13 @@
 # Existing SQLite database contract
 
 This document records the **collector-owned** persistence contract used by the
-future GUI reader. Its authority is the collector reference's
+GUI reader. Its authority is the collector reference's
 `docs/SCHEMA.md` and `src/store/schema.h` at commit
-`b4cbca6`. **Slice 1 contains no SQL or database connection.**
+`b4cbca6`. **Slice 2 implements read-only SQL snapshots and transient rates.**
 
 ## File ownership
 
-The collector writes the SQLite database; the GUI is a reader. Subsequent GUI
-slices must open an **existing** file read-only, verify `PRAGMA user_version = 4`,
+The collector writes the SQLite database; the GUI is a reader. The GUI must open an **existing** file read-only, verify `PRAGMA user_version = 4`,
 and reject other versions or missing tables without creating, migrating, or
 modifying any data. The GUI must not require collector source or capture
 privileges. The collector may use SQLite WAL mode, so readers must tolerate
@@ -64,6 +63,35 @@ initiation flag, LAN classification, interface metadata, process IDs or local
 ports. Cumulative totals must not be presented as historical-window usage.
 The viewer must not infer whether capture is running from packet timestamps.
 
-Current rates in a later slice will be viewer-session estimates derived from
+Current rates are viewer-session estimates derived from
 cumulative counter differences over monotonic elapsed time, not persisted
 historical metrics. First observations do not have a valid rate yet.
+
+## Reader implementation (slice 2)
+
+`DatabaseReader` opens only existing schema-v4 files with Qt's SQLite driver
+in read-only and query-only modes. Each snapshot runs inside `BEGIN`/`COMMIT`
+with rollback on failure; the worker owns the connection and never runs SQL
+from the GUI thread. New snapshots replace models only after a successful
+transaction. Failed reads keep the previous snapshot and rate baselines.
+
+The overview adds unsigned exact integer counters in a portable 128-bit pair;
+byte rates subtract this exact sum before conversion to floating point.
+Display totals and application rankings use floating-point approximations, not
+as inputs for rate sampling. Long-running counters above 2^53 still produce
+correct small positive deltas. Per-row rates also subtract integer counters.
+
+The four bounded model lists use at most 200 rows each. Live samples the 200
+newest matching rows (30-second default); Top ranks cumulative totals, while
+Applications groups ALL records before selecting the top 200. New Endpoints
+ranks grouped remote IPs by their earliest recorded appearance, and never
+applies the protocol/application filter. Name/IP searching is post-filtered
+on ordered SQL candidates when a search is active, so IPv6 text stays portable
+and only the first 200 matching rows are returned; exceptionally large search
+queries may scan many candidate rows.
+
+Sampling uses monotonic viewer-session time, not packet timestamps. New visible
+rows show waiting until two successful reads at least one second apart.
+Failed reads leave baselines unchanged; subsecond reads retain previous
+estimates; counter decreases, clock regression and lifetime changes reset
+baselines. The ring buffer contains at most 60 actual rate samples.

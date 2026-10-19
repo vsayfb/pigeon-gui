@@ -9,12 +9,19 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Qt QML metatype generation requires AUTOMOC on the executable target.
 set(CMAKE_AUTOMOC ON)
 
-# Qt 6.4 is the intended minimum for this standalone shell. A Qt toolchain
-# was not available in the authoring environment to validate this baseline.
-find_package(Qt6 6.4 REQUIRED COMPONENTS Quick QuickControls2)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Quick QuickControls2 Sql Network)
 
 qt_add_executable(pigeon-gui
     src/main.cpp
+    src/app/AppController.h
+    src/app/AppController.cpp
+    src/data/Snapshot.h
+    src/data/DatabaseReader.h
+    src/data/DatabaseReader.cpp
+    src/data/RateSampler.h
+    src/data/RateSampler.cpp
+    src/models/Models.h
+    src/models/Models.cpp
 )
 
 # Strip source-directory prefixes from the compiled QML resource URLs.
@@ -43,7 +50,11 @@ qt_add_qml_module(pigeon-gui
 target_link_libraries(pigeon-gui PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
+    Qt6::Sql
+    Qt6::Network
 )
+
+target_include_directories(pigeon-gui PRIVATE src)
 
 set_target_properties(pigeon-gui PROPERTIES
     WIN32_EXECUTABLE TRUE
@@ -57,3 +68,21 @@ install(TARGETS pigeon-gui
     BUNDLE DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+include(CTest)
+if(BUILD_TESTING)
+    find_package(Qt6 6.4 REQUIRED COMPONENTS Test)
+    add_executable(pigeon-data-tests
+        tests/test_data.cpp
+        src/data/Snapshot.h
+        src/data/DatabaseReader.h
+        src/data/DatabaseReader.cpp
+        src/data/RateSampler.h
+        src/data/RateSampler.cpp
+        src/models/Models.h
+        src/models/Models.cpp
+    )
+    target_include_directories(pigeon-data-tests PRIVATE src)
+    target_link_libraries(pigeon-data-tests PRIVATE Qt6::Core Qt6::Sql Qt6::Network Qt6::Test)
+    add_test(NAME pigeon-data COMMAND pigeon-data-tests)
+endif()

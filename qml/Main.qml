@@ -100,7 +100,7 @@ ApplicationWindow {
 
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("Traffic, applications and endpoints will appear in later slices.")
+                    text: qsTr("Read-only SQLite snapshot viewer. Detailed traffic panels follow in the next slice.")
                     wrapMode: Text.WordWrap
                     color: Theme.textMuted
                     font.pixelSize: 12
@@ -171,14 +171,14 @@ ApplicationWindow {
                     }
 
                     Rectangle {
-                        Layout.preferredWidth: 98
+                        Layout.preferredWidth: 110
                         Layout.preferredHeight: 30
                         color: Theme.accentSurface
                         radius: 15
 
                         Text {
                             anchors.centerIn: parent
-                            text: qsTr("Shell only")
+                            text: readerController.hasSnapshot ? qsTr("Read-only") : qsTr("Connect")
                             color: Theme.accent
                             font.pixelSize: 12
                             font.weight: Font.Medium
@@ -188,7 +188,7 @@ ApplicationWindow {
 
                 SurfaceCard {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: root.compact ? 274 : 254
+                    Layout.preferredHeight: root.compact ? 505 : 450
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -214,7 +214,7 @@ ApplicationWindow {
 
                         Text {
                             Layout.fillWidth: true
-                            text: qsTr("The desktop shell is ready")
+                            text: qsTr("Open an existing Pigeon database")
                             color: Theme.textPrimary
                             font.pixelSize: root.compact ? 21 : 24
                             font.weight: Font.DemiBold
@@ -223,11 +223,82 @@ ApplicationWindow {
 
                         Text {
                             Layout.fillWidth: true
-                            text: qsTr("The next slice will connect to an existing schema-v4 Pigeon database in read-only mode. No traffic data is loaded yet.")
+                            text: qsTr("Choose a schema-v4 SQLite file. The reader never creates or migrates databases. Snapshots refresh about once per second.")
                             color: Theme.textSecondary
                             font.pixelSize: 14
                             wrapMode: Text.WordWrap
                             lineHeight: 1.35
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            TextField {
+                                id: databaseField
+                                Layout.fillWidth: true
+                                placeholderText: qsTr("/path/to/pigeon.db")
+                                text: readerController.databasePath
+                                selectByMouse: true
+                                onAccepted: readerController.selectDatabase(text)
+                                Accessible.name: qsTr("SQLite database file path")
+                            }
+
+                            Button {
+                                text: qsTr("Open")
+                                onClicked: readerController.selectDatabase(databaseField.text)
+                                Accessible.name: qsTr("Open existing database read-only")
+                            }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: readerController.status
+                            color: Theme.textSecondary
+                            font.pixelSize: 12
+                            wrapMode: Text.WrapAnywhere
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: readerController.error.length > 0
+                            text: readerController.error
+                            color: "#F9A8A8"
+                            font.pixelSize: 12
+                            wrapMode: Text.WrapAnywhere
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: readerController.hasSnapshot
+                            text: qsTr("Conversations: %1  ·  Remote IPs: %2")
+                                  .arg(readerController.conversationCount)
+                                  .arg(readerController.remoteIpCount)
+                            color: Theme.textPrimary
+                            font.pixelSize: 14
+                            wrapMode: Text.WordWrap
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: readerController.hasSnapshot
+                            text: qsTr("Downloaded: %1 B  ·  Uploaded: %2 B")
+                                  .arg(readerController.downloaded)
+                                  .arg(readerController.uploaded)
+                            color: Theme.textPrimary
+                            font.pixelSize: 12
+                            wrapMode: Text.WordWrap
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: readerController.hasSnapshot
+                            text: qsTr("Rates (B/s): ↓ %1  ·  ↑ %2")
+                                  .arg(readerController.downloadRate)
+                                  .arg(readerController.uploadRate)
+                            color: Theme.textPrimary
+                            font.pixelSize: 12
+                            wrapMode: Text.WordWrap
                         }
 
                         Item { Layout.fillHeight: true }
@@ -250,7 +321,7 @@ ApplicationWindow {
 
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("This is the first, layout-only implementation slice. Database access, live rates and data views are not implemented in this build.")
+                    text: qsTr("Snapshot data is read-only. Live, Top, Applications and New Endpoints tables will be added in the next reviewed slice.")
                     color: Theme.textMuted
                     font.pixelSize: 12
                     wrapMode: Text.WordWrap
