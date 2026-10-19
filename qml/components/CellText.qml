@@ -22,7 +22,7 @@ Item {
         text: cell.label
         textFormat: Text.PlainText
         color: cell.ink
-        font.pixelSize: Theme.textPixels(12)
+        font.pixelSize: Theme.textPixels(cell.ink === Theme.textMuted ? 10 : 12)
         font.weight: cell.prominent ? Font.DemiBold : Font.Normal
         elide: Text.ElideRight
         horizontalAlignment: cell.rightAligned ? Text.AlignRight : Text.AlignLeft

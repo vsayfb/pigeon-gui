@@ -21,6 +21,7 @@ private:
         double rateDown = 0;
         double rateUp = 0;
         bool valid = false;
+        QVector<double> history;
     };
 
     QHash<QByteArray, RowBaseline> m_rows;

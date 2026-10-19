@@ -7,27 +7,36 @@ import "pages"
 ApplicationWindow {
     id: root
 
-    width: 1240
-    height: 780
+    width: 1500
+    height: 900
     minimumWidth: 620
     minimumHeight: 490
     visible: true
     title: qsTr("Pigeon GUI")
     color: Theme.background
+    palette.window: Theme.background
+    palette.base: Theme.surface
+    palette.button: Theme.surface
+    palette.buttonText: Theme.textPrimary
+    palette.text: Theme.textPrimary
+    palette.highlight: Theme.accent
+    palette.highlightedText: "white"
 
-    property int currentPage: 0
+    property int currentPage: 1
+    property bool darkTheme: false
+    onDarkThemeChanged: Theme.dark = darkTheme
     readonly property bool trafficPage: currentPage === 1 || currentPage === 2
     readonly property bool compact: width < 940
     readonly property var titles: [qsTr("Overview"), qsTr("Live Traffic"),
                                    qsTr("Top Traffic"), qsTr("Applications"), qsTr("New Endpoints")]
-    readonly property var symbols: ["▦", "↓↑", "≡", "▤", "◎"]
+    readonly property var symbols: ["▦", "∿", "▥", "▤", "◎"]
 
     RowLayout {
         anchors.fill: parent
         spacing: 0
 
         Rectangle {
-            Layout.preferredWidth: 218
+            Layout.preferredWidth: 224
             Layout.fillHeight: true
             visible: !root.compact
             color: Theme.sidebar
@@ -39,18 +48,9 @@ ApplicationWindow {
 
                 RowLayout {
                     spacing: 10
-                    Rectangle {
-                        Layout.preferredWidth: 38
-                        Layout.preferredHeight: 38
-                        radius: 11
-                        color: Theme.accentSurface
-                        Text {
-                            anchors.centerIn: parent
-                            text: "P"
-                            font.pixelSize: Theme.textPixels(23)
-                            font.bold: true
-                            color: Theme.accent
-                        }
+                    BrandMark {
+                        Layout.preferredWidth: 40
+                        Layout.preferredHeight: 40
                     }
                     ColumnLayout {
                         spacing: 1
@@ -61,15 +61,17 @@ ApplicationWindow {
                             color: Theme.textPrimary
                         }
                         Text {
-                            text: qsTr("NETWORK VIEWER")
+                            text: qsTr("Network Viewer")
                             font.pixelSize: Theme.textPixels(10)
-                            font.letterSpacing: 1.1
+                            font.letterSpacing: 0.2
                             color: Theme.textMuted
                         }
                     }
                 }
 
-                Item { Layout.preferredHeight: 45 }
+                Item { Layout.preferredHeight: 26 }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Item { Layout.preferredHeight: 22 }
                 Text {
                     text: qsTr("WORKSPACE")
                     font.pixelSize: Theme.textPixels(11)
@@ -98,13 +100,13 @@ ApplicationWindow {
                 Item { Layout.preferredHeight: 15 }
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("READ-ONLY · SQLITE V4")
+                    text: qsTr("SQLite v4 · read-only")
                     font.pixelSize: Theme.textPixels(11)
                     color: Theme.textSecondary
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("Independent of collector")
+                    text: qsTr("Collector runs independently")
                     font.pixelSize: Theme.textPixels(11)
                     color: Theme.textMuted
                 }
@@ -121,9 +123,9 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.leftMargin: root.compact ? 18 : 28
                 Layout.rightMargin: root.compact ? 18 : 28
-                Layout.topMargin: 19
-                Layout.bottomMargin: 13
-                spacing: 10
+                Layout.topMargin: 14
+                Layout.bottomMargin: 5
+                spacing: 5
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -146,7 +148,7 @@ ApplicationWindow {
                             color: Theme.textPrimary
                         }
                     }
-                    Button {
+                    ActionButton {
                         text: readerController.paused ? qsTr("Resume") : qsTr("Pause")
                         enabled: readerController.hasSnapshot
                         Accessible.name: readerController.paused ? qsTr("Resume automatic database refresh")
@@ -157,7 +159,7 @@ ApplicationWindow {
                         width: 106
                         height: 30
                         radius: 15
-                        color: readerController.error.length > 0 ? "#493039" : Theme.accentSurface
+                        color: Theme.accentSurface
                         Text {
                             anchors.centerIn: parent
                             text: readerController.error.length > 0 ? qsTr("Read failed")
@@ -173,10 +175,24 @@ ApplicationWindow {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 9
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: !root.compact
+                        text: root.currentPage === 1 ? qsTr("Recent network activity captured by Pigeon")
+                            : root.currentPage === 2 ? qsTr("The conversations using the most data")
+                            : qsTr("Understand who your laptop speaks to")
+                        color: Theme.textSecondary
+                        font.pixelSize: Theme.textPixels(11)
+                        elide: Text.ElideRight
+                    }
+
                     TextField {
                         id: databasePath
-                        Layout.fillWidth: true
+                        Layout.fillWidth: root.compact
+                        Layout.preferredWidth: root.compact ? 300 : Math.min(540, root.width * 0.36)
                         Layout.minimumWidth: 140
+                        implicitHeight: 34
                         text: readerController.databasePath
                         placeholderText: qsTr("Existing Pigeon SQLite database path")
                         selectByMouse: true
@@ -190,21 +206,16 @@ ApplicationWindow {
                         onAccepted: readerController.selectDatabase(text)
                         Accessible.name: qsTr("Database path")
                     }
-                    Button {
+                    ActionButton {
                         text: qsTr("Open")
-                        contentItem: Text {
-                            text: parent.text
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            color: Theme.background
-                            font.weight: Font.DemiBold
-                        }
-                        background: Rectangle {
-                            radius: 8
-                            color: Theme.accent
-                        }
+                        primary: true
                         Accessible.name: qsTr("Open existing database read-only")
                         onClicked: readerController.selectDatabase(databasePath.text)
+                    }
+                    ActionButton {
+                        text: Theme.dark ? "☀" : "☾"
+                        Accessible.name: Theme.dark ? qsTr("Use light theme") : qsTr("Use dark theme")
+                        onClicked: root.darkTheme = !root.darkTheme
                     }
                 }
 
@@ -225,8 +236,8 @@ ApplicationWindow {
                     visible: readerController.error.length > 0
                     implicitHeight: Math.max(56, errorLabel.implicitHeight + 20)
                     radius: 9
-                    color: "#452A37"
-                    border.color: "#A66070"
+                    color: Theme.surfaceRaised
+                    border.color: Theme.danger
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 10
@@ -293,13 +304,13 @@ ApplicationWindow {
                 Layout.rightMargin: root.compact ? 14 : 24
                 Layout.topMargin: 8
                 Layout.bottomMargin: 4
-                visible: readerController.hasSnapshot && root.currentPage !== 0
+                visible: readerController.hasSnapshot && root.currentPage >= 3
                 page: root.currentPage
             }
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
+                Layout.preferredHeight: 0
                 color: Theme.border
             }
 
@@ -310,10 +321,10 @@ ApplicationWindow {
                 Layout.minimumWidth: 0
                 Layout.leftMargin: root.compact ? 14 : 24
                 Layout.rightMargin: root.compact ? 14 : 24
-                Layout.topMargin: 17
+                Layout.topMargin: 12
                 visible: readerController.hasSnapshot
                 currentIndex: root.currentPage
-                OverviewPage { }
+                OverviewPage { onConversationActivated: detailsDrawer.open() }
                 TrafficPage {
                     live: true
                     onConversationActivated: detailsDrawer.open()

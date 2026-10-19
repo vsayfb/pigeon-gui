@@ -12,7 +12,9 @@ SurfaceCard {
     property string emptyTitle: qsTr("No matching conversations")
     property string emptyDetail: qsTr("No rows match the current scope.")
 
-    readonly property int tableWidth: 1200
+    readonly property int tableWidth: 1110 + (live ? 100 : 0)
+    readonly property real domainWidth: 220 + Math.max(0, horizontal.contentWidth - tableWidth) * 0.6
+    readonly property real ipWidth: 190 + Math.max(0, horizontal.contentWidth - tableWidth) * 0.4
     implicitHeight: 420
     clip: true
 
@@ -25,6 +27,7 @@ SurfaceCard {
             id: horizontal
             Layout.fillWidth: true
             Layout.fillHeight: true
+            visible: list.count > 0
             clip: true
             contentWidth: Math.max(width, table.tableWidth)
             contentHeight: height
@@ -39,31 +42,33 @@ SurfaceCard {
 
                 Rectangle {
                     width: parent.width
-                    height: Math.max(45, Theme.textPixels(40))
+                    height: Math.max(34, Theme.textPixels(28))
                     color: Theme.surfaceRaised
                     radius: 12
                     Row {
                         anchors.fill: parent
-                        CellText { width: 133; height: parent.height; label: qsTr("APPLICATION"); ink: Theme.textMuted }
-                        CellText { width: 245; height: parent.height; label: qsTr("DOMAIN"); ink: Theme.textMuted }
-                        CellText { width: 235; height: parent.height; label: qsTr("IP"); ink: Theme.textMuted }
-                        CellText { width: 82; height: parent.height; label: qsTr("PROTOCOL"); ink: Theme.textMuted }
-                        CellText { width: 120; height: parent.height; label: table.live ? qsTr("DOWN / SEC") : qsTr("DOWNLOADED"); ink: Theme.textMuted; rightAligned: true }
-                        CellText { width: 120; height: parent.height; label: table.live ? qsTr("UP / SEC") : qsTr("UPLOADED"); ink: Theme.textMuted; rightAligned: true }
-                        CellText { width: 90; height: parent.height; label: qsTr("DIRECTION"); ink: Theme.textMuted }
-                        CellText { width: 175; height: parent.height; label: qsTr("LAST SEEN"); ink: Theme.textMuted }
+                        CellText { width: 150; height: parent.height; label: qsTr("APPLICATION"); ink: Theme.textMuted }
+                        CellText { width: table.domainWidth; height: parent.height; label: qsTr("DOMAIN"); ink: Theme.textMuted }
+                        CellText { width: table.ipWidth; height: parent.height; label: qsTr("IP"); ink: Theme.textMuted }
+                        CellText { width: 55; height: parent.height; label: qsTr("PORT"); ink: Theme.textMuted }
+                        CellText { width: 75; height: parent.height; label: qsTr("PROTOCOL"); ink: Theme.textMuted }
+                        CellText { width: 115; height: parent.height; label: table.live ? qsTr("DOWN / SEC") : qsTr("DOWNLOADED"); ink: Theme.textMuted; rightAligned: true }
+                        CellText { width: 115; height: parent.height; label: table.live ? qsTr("UP / SEC") : qsTr("UPLOADED"); ink: Theme.textMuted; rightAligned: true }
+                        CellText { width: 85; height: parent.height; label: qsTr("DIRECTION"); ink: Theme.textMuted }
+                        CellText { visible: table.live; width: visible ? 100 : 0; height: parent.height; label: qsTr("RECENT RATE"); ink: Theme.textMuted }
+                        CellText { width: 105; height: parent.height; label: qsTr("LAST SEEN"); ink: Theme.textMuted }
                     }
                 }
 
                 ListView {
                     id: list
                     width: parent.width
-                    height: parent.height - Math.max(45, Theme.textPixels(40))
+                    height: parent.height - Math.max(34, Theme.textPixels(28))
                     clip: true
                     model: table.sourceModel
                     activeFocusOnTab: true
                 Accessible.name: qsTr("Conversations list")
-                Accessible.description: qsTr("Columns: application, domain, IP, protocol, download, upload, direction, last seen. Use Up and Down to select a row, Left and Right to scroll, and Enter to open details.")
+                Accessible.description: qsTr("Columns: application, domain, IP, port, protocol, download, upload, direction, recent rate, last seen. Use Up and Down to select a row, Left and Right to scroll, and Enter to open details.")
                 Keys.onLeftPressed: horizontal.contentX = Math.max(0, horizontal.contentX - 120)
                 Keys.onRightPressed: horizontal.contentX = Math.min(
                     horizontal.contentWidth - horizontal.width, horizontal.contentX + 120)
@@ -99,12 +104,13 @@ SurfaceCard {
                         required property var packetsUp
                         required property bool ratesValid
                         required property real rateDown
+                        required property var rateHistory
                         required property real rateUp
                         required property real lastSeen
                         required property int index
 
                         width: list.width
-                        height: Math.max(53, Theme.textPixels(47))
+                        height: Math.max(39, Theme.textPixels(33))
                         color: readerController.selectedIdentity === row.identity
                             ? Theme.accentSurface : index % 2 ? Theme.rowAlternate : Theme.surface
                         border.width: rowHover.hovered || (list.activeFocus && list.currentIndex === index) ? 2 : 0
@@ -120,40 +126,42 @@ SurfaceCard {
                         Row {
                             height: parent.height
                             width: parent.width
-                            CellText {
-                                width: 133; height: parent.height
-                                label: row.application.length ? row.application : qsTr("Unresolved")
-                                ink: Theme.textPrimary; prominent: true
+                            ApplicationCell {
+                                width: 150
+                                height: parent.height
+                                application: row.application
+                                domain: row.remoteName
                             }
                             CellText {
-                                width: 245; height: parent.height
+                                width: table.domainWidth; height: parent.height
                                 label: row.remoteName.length ? row.remoteName : qsTr("Not observed")
                                 fullText: row.remoteName.length
                                     ? row.remoteName + "\n" + qsTr("Observed DNS association, not verified ownership")
                                     : qsTr("No observed DNS association")
                             }
                             CellText {
-                                width: 235; height: parent.height
+                                width: table.ipWidth; height: parent.height
                                 label: row.remoteIp
                                 fullText: row.remoteIp + "\n" + qsTr("Remote port: %1").arg(row.remotePort)
                             }
-                            CellText { width: 82; height: parent.height; label: Format.protocol(row.protocol) }
+                            CellText { width: 55; height: parent.height; label: String(row.remotePort) }
+                            CellText { width: 75; height: parent.height; label: Format.protocol(row.protocol) }
                             CellText {
-                                width: 120; height: parent.height; rightAligned: true; ink: Theme.accent
+                                width: 115; height: parent.height; rightAligned: true; ink: Theme.download
                                 label: table.live ? (row.ratesValid ? Format.speed(row.rateDown, true) : qsTr("Waiting"))
                                                   : Format.exactSize(row.bytesDownExact)
                                 fullText: table.live ? (row.ratesValid ? label : qsTr("Waiting for a second sample ≥ 1 second later"))
                                                      : row.bytesDownExact + " B"
                             }
                             CellText {
-                                width: 120; height: parent.height; rightAligned: true; ink: Theme.positive
+                                width: 115; height: parent.height; rightAligned: true; ink: Theme.upload
                                 label: table.live ? (row.ratesValid ? Format.speed(row.rateUp, true) : qsTr("Waiting"))
                                                   : Format.exactSize(row.bytesUpExact)
                                 fullText: table.live ? (row.ratesValid ? label : qsTr("Waiting for a second sample ≥ 1 second later"))
                                                      : row.bytesUpExact + " B"
                             }
                             Item {
-                                width: 90; height: parent.height
+                                width: 85; height: parent.height
                                 Row {
                                     anchors.centerIn: parent
                                     spacing: 10
@@ -165,8 +173,14 @@ SurfaceCard {
                                 ToolTip.text: qsTr("Arrows indicate observed packet direction, not connection initiation")
                                 HoverHandler { id: hover }
                             }
+                            Sparkline {
+                                visible: table.live
+                                width: visible ? 100 : 0
+                                height: parent.height
+                                samples: row.rateHistory
+                            }
                             CellText {
-                                width: 175; height: parent.height
+                                width: 105; height: parent.height
                                 label: Format.relative(row.lastSeen)
                                 fullText: Format.timestamp(row.lastSeen)
                             }
@@ -178,7 +192,7 @@ SurfaceCard {
 
         EmptyState {
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.preferredHeight: 180
             visible: list.count === 0
             heading: table.emptyTitle
             explanation: table.emptyDetail

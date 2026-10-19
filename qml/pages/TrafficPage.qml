@@ -13,49 +13,43 @@ Item {
         anchors.fill: parent
         clip: true
         contentWidth: width
-        contentHeight: layout.implicitHeight + 42
+        contentHeight: layout.implicitHeight + 20
         boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
         ColumnLayout {
             id: layout
-            x: 3
-            y: 4
-            width: Math.max(0, scroll.width - 14)
-            spacing: 18
+            x: 2
+            width: Math.max(0, scroll.width - 12)
+            spacing: 14
 
-            SurfaceCard {
+            MetricsRow {
                 Layout.fillWidth: true
-                Layout.preferredHeight: page.live ? 96 : 92
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 18
-                    spacing: 6
-                    Text {
-                        Layout.fillWidth: true
-                        text: page.live
-                            ? qsTr("%1 · newest 200 matches before rate ranking").arg(
-                                readerController.recentSeconds === 0 ? qsTr("All recorded")
-                                : qsTr("Last %1 seconds").arg(readerController.recentSeconds))
-                            : qsTr("All recorded data · top 200 by cumulative ranking")
-                        font.pixelSize: Theme.textPixels(14)
-                        font.weight: Font.DemiBold
-                        color: Theme.textPrimary
-                    }
-                    Text {
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        text: page.live
-                            ? qsTr("Estimated rates require a second sample at least one second later. An empty list does not mean the collector has stopped.")
-                            : qsTr("Downloaded and uploaded values are lifetime transport-payload byte totals, not traffic within a recent time window.")
-                        font.pixelSize: Theme.textPixels(12)
-                        color: Theme.textSecondary
-                    }
-                }
+            }
+
+            TrafficChart {
+                visible: page.live
+                Layout.fillWidth: true
+                Layout.preferredHeight: 245
+                history: readerController.trafficHistory
+            }
+
+            FilterBar {
+                Layout.fillWidth: true
+                page: page.live ? 1 : 2
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: page.live ? qsTr("Recent conversations · newest 200 matches before rate ranking")
+                    : qsTr("Top 200 conversations · all recorded transport-payload totals")
+                color: Theme.textSecondary
+                font.pixelSize: Theme.textPixels(11)
             }
 
             ConversationTable {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.max(440, page.height - 175)
+                Layout.preferredHeight: Math.max(310, page.height - (page.live ? 440 : 190))
                 sourceModel: page.live ? readerController.liveModel : readerController.topModel
                 live: page.live
                 onConversationActivated: function(identity) {
@@ -63,14 +57,14 @@ Item {
                     page.conversationActivated()
                 }
                 emptyDetail: page.live
-                    ? qsTr("No matching packets in the selected recency window. Try All recorded or Top Traffic.")
-                    : qsTr("No stored conversations yet. Open a database containing collector observations.")
+                    ? qsTr("No matching packets in this recency window. Try All recorded or Top Traffic. This does not indicate collector status.")
+                    : qsTr("No stored conversations match these filters.")
             }
 
             Text {
                 Layout.fillWidth: true
-                text: qsTr("Observed DNS names are historical associations, not verified endpoint ownership. Arrows indicate seen packet directions.")
-                font.pixelSize: Theme.textPixels(11)
+                text: qsTr("DNS names are observed associations, not verified ownership. Arrows show observed packet directions. Rates are estimated from database changes.")
+                font.pixelSize: Theme.textPixels(10)
                 color: Theme.textMuted
                 wrapMode: Text.WordWrap
             }

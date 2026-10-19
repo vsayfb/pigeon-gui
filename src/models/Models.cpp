@@ -26,6 +26,14 @@ QVariant ConversationsModel::data(const QModelIndex &index, int role) const
     case RatesValidRole: return r.rateValid;
     case RateDownRole: return r.rateDown;
     case RateUpRole: return r.rateUp;
+    case RateHistoryRole: {
+        QVariantList points;
+        points.reserve(r.rateHistory.size());
+        for (double point : r.rateHistory)
+            points.append(point);
+
+        return points;
+    }
     case BytesDownExactRole: return QString::number(r.bytesIn);
     case BytesUpExactRole: return QString::number(r.bytesOut);
     default: return {};
@@ -40,7 +48,7 @@ QHash<int, QByteArray> ConversationsModel::roleNames() const
             {PacketsDownRole, "packetsDown"}, {PacketsUpRole, "packetsUp"},
             {FirstSeenRole, "firstSeen"}, {LastSeenRole, "lastSeen"}, {RatesValidRole, "ratesValid"},
             {RateDownRole, "rateDown"}, {RateUpRole, "rateUp"},
-            {BytesDownExactRole, "bytesDownExact"}, {BytesUpExactRole, "bytesUpExact"}};
+            {BytesDownExactRole, "bytesDownExact"}, {BytesUpExactRole, "bytesUpExact"}, {RateHistoryRole, "rateHistory"}};
 }
 
 bool ConversationsModel::findIdentity(const QString &identity, Conversation &row) const

@@ -59,7 +59,7 @@ public:
         IdentityRole = Qt::UserRole + 1, ApplicationRole, LocalIpRole, RemoteIpRole,
         RemoteNameRole, RemotePortRole, ProtocolRole, BytesDownRole, BytesUpRole,
         PacketsDownRole, PacketsUpRole, FirstSeenRole, LastSeenRole, RatesValidRole,
-        RateDownRole, RateUpRole, BytesDownExactRole, BytesUpExactRole
+        RateDownRole, RateUpRole, BytesDownExactRole, BytesUpExactRole, RateHistoryRole
     };
     using KeyedModel::KeyedModel;
     QVariant data(const QModelIndex &index, int role) const override;

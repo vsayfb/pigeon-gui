@@ -1,4 +1,5 @@
 #include "app/AppController.h"
+#include "app/AppIconProvider.h"
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>
@@ -31,6 +32,21 @@ int main(int argc, char *argv[])
     QCommandLineOption checkQmlOption(QStringLiteral("check-qml"),
                                       QStringLiteral("Check QML startup across all views and exit"));
     arguments.addOption(checkQmlOption);
+    QCommandLineOption previewOption(QStringLiteral("render-preview"),
+                                     QStringLiteral("Render a window preview to a PNG and exit"),
+                                     QStringLiteral("path"));
+    arguments.addOption(previewOption);
+    QCommandLineOption pageOption(QStringLiteral("preview-page"),
+                                  QStringLiteral("Preview page (0–4)"), QStringLiteral("number"), QStringLiteral("1"));
+    arguments.addOption(pageOption);
+    QCommandLineOption widthOption(QStringLiteral("preview-width"),
+                                   QStringLiteral("Preview width"), QStringLiteral("pixels"), QStringLiteral("1500"));
+    arguments.addOption(widthOption);
+    arguments.addOption({QStringLiteral("preview-dark"), QStringLiteral("Use dark theme for a preview")});
+    QCommandLineOption delayOption(QStringLiteral("preview-delay"),
+                                   QStringLiteral("Wait before rendering a preview"),
+                                   QStringLiteral("milliseconds"), QStringLiteral("1800"));
+    arguments.addOption(delayOption);
     arguments.process(app);
 
     pigeon::AppController controller;
@@ -38,6 +54,10 @@ int main(int argc, char *argv[])
         controller.selectDatabase(arguments.value(databaseOption));
 
     QQmlApplicationEngine engine;
+    auto *appIcons = new pigeon::AppIconProvider;
+    engine.addImageProvider(QStringLiteral("appicons"), appIcons);
+    engine.rootContext()->setContextProperty(QStringLiteral("appIcons"),
+        new pigeon::AppIconResolver(appIcons, &engine));
     QList<QQmlError> qmlWarnings;
     QObject::connect(&engine, &QQmlEngine::warnings, &engine,
                      [&qmlWarnings](const QList<QQmlError> &warnings) {
@@ -49,21 +69,38 @@ int main(int argc, char *argv[])
     if (engine.rootObjects().isEmpty())
         return EXIT_FAILURE;
 
+    if (arguments.isSet(previewOption)) {
+        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+        if (!window)
+            return EXIT_FAILURE;
+
+        window->setProperty("darkTheme", arguments.isSet(QStringLiteral("preview-dark")));
+        window->setWidth(qBound(620, arguments.value(widthOption).toInt(), 2400));
+        window->setProperty("currentPage", qBound(0, arguments.value(pageOption).toInt(), 4));
+        QTimer::singleShot(qBound(100, arguments.value(delayOption).toInt(), 60000), window, [&app, window, &arguments, &previewOption] {
+            const bool saved = window->grabWindow().save(arguments.value(previewOption));
+            app.exit(saved ? EXIT_SUCCESS : EXIT_FAILURE);
+        });
+
+        return app.exec();
+    }
+
     if (arguments.isSet(checkQmlOption)) {
         auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
         if (!window)
             return EXIT_FAILURE;
 
-        // Exercise every page and both layout widths. QML property errors
-        // from lazily instantiated view delegates are also reported here.
-        for (int page = 0; page < 5; ++page) {
-            QTimer::singleShot(100 * (page + 1), window, [window, page] {
-                window->setWidth(page % 2 ? 700 : 1240);
-                window->setHeight(page % 2 ? 600 : 780);
-                window->setProperty("currentPage", page);
+        // Exercise all pages in both themes, including narrow layouts.
+        for (int step = 0; step < 10; ++step) {
+            QTimer::singleShot(150 * (step + 1), window, [window, step] {
+                window->setWidth(step % 2 ? 700 : 1500);
+                window->setHeight(step % 2 ? 600 : 900);
+                window->setProperty("darkTheme", step >= 5);
+                window->setProperty("currentPage", step % 5);
             });
         }
-        QTimer::singleShot(750, &app, &QCoreApplication::quit);
+
+        QTimer::singleShot(1750, &app, &QCoreApplication::quit);
         const int result = app.exec();
         for (const QQmlError &warning : std::as_const(qmlWarnings))
             qCritical().noquote() << warning.toString();

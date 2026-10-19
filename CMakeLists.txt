@@ -13,6 +13,8 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS Quick QuickControls2 Sql Network)
 
 qt_add_executable(pigeon-gui
     src/main.cpp
+    src/app/AppIconProvider.h
+    src/app/AppIconProvider.cpp
     src/app/AppController.h
     src/app/AppController.cpp
     src/data/Snapshot.h
@@ -37,7 +39,7 @@ set_source_files_properties(qml/components/SurfaceCard.qml PROPERTIES
     QT_RESOURCE_ALIAS SurfaceCard.qml
 )
 
-foreach(name NavTab MetricCard EmptyState CellText DirectionIcon TrafficChart
+foreach(name Sparkline BrandMark ActionButton ApplicationCell MetricsRow NavTab MetricCard EmptyState CellText DirectionIcon TrafficChart
              ConversationTable ApplicationsTable EndpointsTable FilterBar ScopeCombo ConversationDetails)
     set_source_files_properties(qml/components/${name}.qml PROPERTIES
         QT_RESOURCE_ALIAS components/${name}.qml
@@ -62,6 +64,11 @@ qt_add_qml_module(pigeon-gui
         qml/Main.qml
         qml/theme/Theme.qml
         qml/components/SurfaceCard.qml
+        qml/components/Sparkline.qml
+        qml/components/BrandMark.qml
+        qml/components/ActionButton.qml
+        qml/components/ApplicationCell.qml
+        qml/components/MetricsRow.qml
         qml/components/NavTab.qml
         qml/components/MetricCard.qml
         qml/components/EmptyState.qml
@@ -107,6 +114,16 @@ install(TARGETS pigeon-gui
 include(CTest)
 if(BUILD_TESTING)
     find_package(Qt6 6.4 REQUIRED COMPONENTS Test)
+    add_executable(pigeon-icon-tests
+        tests/test_icons.cpp
+        src/app/AppIconProvider.h
+        src/app/AppIconProvider.cpp
+    )
+    target_include_directories(pigeon-icon-tests PRIVATE src)
+    target_link_libraries(pigeon-icon-tests PRIVATE Qt6::Quick Qt6::Test)
+    add_test(NAME pigeon-icons COMMAND pigeon-icon-tests)
+    set_tests_properties(pigeon-icons PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
     add_executable(pigeon-data-tests
         tests/test_data.cpp
         src/data/Snapshot.h

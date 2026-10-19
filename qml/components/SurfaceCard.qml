@@ -5,5 +5,5 @@ Rectangle {
     color: Theme.surface
     border.color: Theme.border
     border.width: 1
-    radius: 16
+    radius: 12
 }

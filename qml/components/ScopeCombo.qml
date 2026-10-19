@@ -30,7 +30,7 @@ ComboBox {
         elide: Text.ElideRight
     }
     background: Rectangle {
-        color: Theme.surfaceRaised
+        color: Theme.surface
         border.color: combo.activeFocus ? Theme.accent : Theme.border
         radius: 7
     }

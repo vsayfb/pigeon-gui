@@ -31,7 +31,7 @@ SurfaceCard {
                 color: Theme.surfaceRaised
                 radius: 12
                 width: parent.width
-                height: Math.max(45, Theme.textPixels(40))
+                height: Math.max(34, Theme.textPixels(28))
                 Row {
                     anchors.fill: parent
                     CellText { width: 225; height: parent.height; label: qsTr("APPLICATION"); ink: Theme.textMuted }
@@ -46,7 +46,7 @@ SurfaceCard {
             ListView {
                 id: list
                 width: parent.width
-                height: parent.height - Math.max(45, Theme.textPixels(40))
+                height: parent.height - Math.max(34, Theme.textPixels(28))
                 clip: true
                 model: table.sourceModel
                 boundsBehavior: Flickable.StopAtBounds
@@ -83,7 +83,7 @@ SurfaceCard {
                     required property var remoteIps
                     required property real lastSeen
                     required property int index
-                    width: list.width; height: Math.max(53, Theme.textPixels(47))
+                    width: list.width; height: Math.max(39, Theme.textPixels(33))
                     color: index % 2 ? Theme.rowAlternate : Theme.surface
                     TapHandler {
                         onTapped: {
@@ -97,9 +97,9 @@ SurfaceCard {
                     border.color: Theme.accent
                     Row {
                         anchors.fill: parent
-                        CellText { width: 225; height: parent.height; label: entry.name; prominent: true; ink: Theme.textPrimary }
-                        CellText { width: 136; height: parent.height; label: "≈" + Format.size(entry.bytesDown); ink: Theme.accent; rightAligned: true }
-                        CellText { width: 136; height: parent.height; label: "≈" + Format.size(entry.bytesUp); ink: Theme.positive; rightAligned: true }
+                        ApplicationCell { width: 225; height: parent.height; application: entry.name }
+                        CellText { width: 136; height: parent.height; label: "≈" + Format.size(entry.bytesDown); ink: Theme.download; rightAligned: true }
+                        CellText { width: 136; height: parent.height; label: "≈" + Format.size(entry.bytesUp); ink: Theme.upload; rightAligned: true }
                         CellText { width: 105; height: parent.height; label: String(entry.conversations); rightAligned: true }
                         CellText { width: 105; height: parent.height; label: String(entry.remoteIps); rightAligned: true }
                         CellText { width: 150; height: parent.height; label: Format.relative(entry.lastSeen); fullText: Format.timestamp(entry.lastSeen) }

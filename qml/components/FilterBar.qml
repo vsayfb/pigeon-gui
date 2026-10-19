@@ -6,49 +6,27 @@ import Pigeon.Gui 1.0
 SurfaceCard {
     id: bar
     property int page: 1 // 1 Live, 2 Top, 3 Applications, 4 New Endpoints
-    implicitHeight: filters.implicitHeight + 26
+    implicitHeight: filters.implicitHeight + 16
     Layout.fillWidth: true
+    visible: page !== 3
 
     ColumnLayout {
         id: filters
         anchors.fill: parent
-        anchors.margins: 13
-        spacing: 10
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-            Text {
-                Layout.fillWidth: true
-                text: bar.page === 3 ? qsTr("Applications: unfiltered totals across all conversations")
-                     : bar.page === 4 ? qsTr("New Endpoints: name/IP search and address family only · global first-seen")
-                     : qsTr("Live / Top: text, protocol, IP family and exact application · 200-row limit")
-                wrapMode: Text.WordWrap
-                color: Theme.textSecondary
-                font.pixelSize: Theme.textPixels(11)
-            }
-            Button {
-                text: qsTr("Clear filters")
-                Accessible.name: qsTr("Clear all filters and restore default sorts")
-                onClicked: {
-                    searchDebounce.stop()
-                    searchField.text = ""
-                    readerController.clearFilters()
-                }
-            }
-        }
+        anchors.margins: 8
+        spacing: 8
 
         Flow {
             Layout.fillWidth: true
             // Flow computes its implicitHeight internally; let ColumnLayout
             // allocate enough space for all wrapped rows instead.
             Layout.preferredHeight: childrenRect.height
-            spacing: 10
+            spacing: 8
             visible: bar.page !== 3
 
             TextField {
                 id: searchField
-                width: Math.min(270, Math.max(150, filters.width - 18))
+                width: Math.min(300, Math.max(150, filters.width - 18))
                 height: 38
                 placeholderText: bar.page === 4 ? qsTr("Search name or IP")
                                   : qsTr("Search app, domain or IP")
@@ -58,7 +36,7 @@ SurfaceCard {
                 maximumLength: 127
                 text: readerController.search
                 background: Rectangle {
-                    color: Theme.surfaceRaised
+                    color: Theme.surface
                     border.color: searchField.activeFocus ? Theme.accent : Theme.border
                     radius: 7
                 }
@@ -86,6 +64,15 @@ SurfaceCard {
                             searchField.text = readerController.search
                         }
                     }
+                }
+            }
+
+            ActionButton {
+                text: qsTr("Clear filters")
+                onClicked: {
+                    searchDebounce.stop()
+                    searchField.text = ""
+                    readerController.clearFilters()
                 }
             }
 
@@ -143,7 +130,7 @@ SurfaceCard {
                 color: Theme.accent
                 font.pixelSize: Theme.textPixels(12)
             }
-            Button {
+            ActionButton {
                 text: qsTr("Remove application")
                 Accessible.name: qsTr("Show all applications in conversation lists")
                 onClicked: readerController.clearApplication()

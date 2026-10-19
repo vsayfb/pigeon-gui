@@ -8,38 +8,53 @@ SurfaceCard {
     property string label: ""
     property string value: "—"
     property string annotation: ""
+    property string symbol: "≋"
     property color valueColor: Theme.textPrimary
-    implicitHeight: 124
+    implicitHeight: 94
+    radius: 12
 
-    ColumnLayout {
+    RowLayout {
         anchors.fill: parent
-        anchors.margins: 17
-        spacing: 5
+        anchors.margins: 15
+        spacing: 12
 
-        Text {
-            Layout.fillWidth: true
-            text: metric.label
-            font.pixelSize: Theme.textPixels(12)
-            color: Theme.textSecondary
-            elide: Text.ElideRight
+        Rectangle {
+            Layout.preferredWidth: 38
+            Layout.preferredHeight: 42
+            radius: 12
+            color: Theme.accentSurface
+
+            Text {
+                anchors.centerIn: parent
+                text: metric.symbol
+                color: metric.valueColor === Theme.textPrimary ? Theme.accent : metric.valueColor
+                font.pixelSize: 25
+            }
         }
-        Text {
+
+        ColumnLayout {
             Layout.fillWidth: true
-            text: metric.value
-            font.pixelSize: Theme.textPixels(23)
-            font.weight: Font.DemiBold
-            color: metric.valueColor
-            elide: Text.ElideRight
-            ToolTip.visible: totalHover.hovered && truncated
-            ToolTip.text: metric.value
-            HoverHandler { id: totalHover }
-        }
-        Text {
-            Layout.fillWidth: true
-            text: metric.annotation
-            font.pixelSize: Theme.textPixels(11)
-            color: Theme.textMuted
-            elide: Text.ElideRight
+            spacing: 4
+
+            Text {
+                Layout.fillWidth: true
+                text: metric.label
+                font.pixelSize: Theme.textPixels(11)
+                color: Theme.textSecondary
+                elide: Text.ElideRight
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: metric.value
+                font.pixelSize: Theme.textPixels(21)
+                font.weight: Font.DemiBold
+                color: metric.valueColor
+                elide: Text.ElideRight
+                ToolTip.visible: hover.hovered
+                ToolTip.text: metric.value + (metric.annotation ? " · " + metric.annotation : "")
+                HoverHandler { id: hover }
+            }
         }
     }
 }

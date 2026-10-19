@@ -91,6 +91,7 @@ struct Conversation {
     bool rateValid = false;
     double rateDown = 0;
     double rateUp = 0;
+    QVector<double> rateHistory; // combined rates, viewer session only
 
     QByteArray key() const
     {

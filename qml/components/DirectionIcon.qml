@@ -12,12 +12,18 @@ Item {
     Accessible.name: incoming ? qsTr("Incoming packets") : qsTr("Outgoing packets")
     Accessible.description: observed ? qsTr("Observed") : qsTr("Not observed")
 
+    Connections {
+        target: Theme
+        function onDarkChanged() { canvas.requestPaint() }
+    }
+
     Canvas {
+        id: canvas
         anchors.fill: parent
         onPaint: {
             var ctx = getContext("2d");
             ctx.clearRect(0, 0, width, height);
-            ctx.strokeStyle = direction.incoming ? Theme.accent : Theme.positive;
+            ctx.strokeStyle = direction.incoming ? Theme.download : Theme.upload;
             ctx.lineWidth = Math.max(1.6, width / 9);
             ctx.lineCap = "round";
             ctx.lineJoin = "round";

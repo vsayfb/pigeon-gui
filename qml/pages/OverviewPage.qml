@@ -6,6 +6,7 @@ import "../theme/Format.js" as Format
 
 Item {
     id: page
+    signal conversationActivated()
 
     Flickable {
         id: scroll
@@ -41,7 +42,7 @@ Item {
                     Layout.fillWidth: true
                     label: qsTr("Downloaded")
                     value: Format.exactSize(readerController.downloaded)
-                    valueColor: Theme.accent
+                    valueColor: Theme.download
                     annotation: qsTr("All recorded payload bytes")
                     ToolTip.visible: downHover.hovered
                     ToolTip.text: readerController.downloaded + qsTr(" bytes exactly")
@@ -51,7 +52,7 @@ Item {
                     Layout.fillWidth: true
                     label: qsTr("Uploaded")
                     value: Format.exactSize(readerController.uploaded)
-                    valueColor: Theme.positive
+                    valueColor: Theme.upload
                     annotation: qsTr("All recorded payload bytes")
                     ToolTip.visible: upHover.hovered
                     ToolTip.text: readerController.uploaded + qsTr(" bytes exactly")
@@ -80,14 +81,14 @@ Item {
                     Layout.fillWidth: true
                     label: qsTr("Current download estimate")
                     value: Format.speed(readerController.downloadRateValue, readerController.ratesMeasured)
-                    valueColor: Theme.accent
+                    valueColor: Theme.download
                     annotation: qsTr("Viewer-session counter difference")
                 }
                 MetricCard {
                     Layout.fillWidth: true
                     label: qsTr("Current upload estimate")
                     value: Format.speed(readerController.uploadRateValue, readerController.ratesMeasured)
-                    valueColor: Theme.positive
+                    valueColor: Theme.upload
                     annotation: qsTr("Viewer-session counter difference")
                 }
             }
@@ -129,7 +130,8 @@ Item {
                     font.weight: Font.DemiBold
                 }
                 Text {
-                    text: qsTr("30s window · newest 200 matches")
+                    text: readerController.recentSeconds === 0 ? qsTr("All recorded · newest 200 matches")
+                        : qsTr("%1s window · newest 200 matches").arg(readerController.recentSeconds)
                     color: Theme.textSecondary
                     font.pixelSize: Theme.textPixels(11)
                 }
@@ -140,7 +142,11 @@ Item {
                 Layout.preferredHeight: 350
                 sourceModel: readerController.liveModel
                 live: true
-                emptyDetail: qsTr("Nothing observed in the past 30 seconds. Older recordings remain in Top Traffic.")
+                onConversationActivated: function(identity) {
+                    readerController.selectConversation(identity, true)
+                    page.conversationActivated()
+                }
+                emptyDetail: qsTr("No matching observations in this scope. Older recordings remain in Top Traffic.")
             }
 
             Text {

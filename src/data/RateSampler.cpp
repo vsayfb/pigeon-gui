@@ -71,12 +71,17 @@ void RateSampler::sample(Snapshot &snapshot, double now, int liveSort)
                 state.baseUp = row.bytesOut;
                 state.sampledAt = now;
                 state.valid = true;
+                if (state.history.size() >= 30)
+                    state.history.removeFirst();
+
+                state.history.append(state.rateDown + state.rateUp);
             }
         }
         state.observed = row;
         row.rateValid = state.valid;
         row.rateDown = state.rateDown;
         row.rateUp = state.rateUp;
+        row.rateHistory = state.history;
         next.insert(key, std::move(state));
     }
     m_rows = std::move(next); // rows leaving Live lose their baselines

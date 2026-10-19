@@ -80,6 +80,7 @@ private slots:
     void exactRatesAndReset();
     void failedReadDoesNotModifySnapshot();
     void stableModelIndexes();
+    void boundedRowHistory();
 };
 
 void DataTests::exactWideIntegerFormatting()
@@ -218,6 +219,43 @@ void DataTests::exactRatesAndReset()
     for (const Conversation &row : s.live)
         if (row.application == QStringLiteral("firefox"))
             QVERIFY(!row.rateValid);
+}
+
+void DataTests::boundedRowHistory()
+{
+    RateSampler sampler;
+    Snapshot snapshot;
+    Conversation row;
+    row.application = QStringLiteral("history-test");
+    row.bytesIn = 100;
+    snapshot.live = {row};
+    sampler.sample(snapshot, 0);
+    QVERIFY(snapshot.live.first().rateHistory.isEmpty());
+
+    for (int sample = 1; sample <= 35; ++sample) {
+        row.bytesIn += quint64(sample);
+        snapshot.live = {row};
+        sampler.sample(snapshot, sample);
+    }
+
+    QCOMPARE(snapshot.live.first().rateHistory.size(), 30);
+    QCOMPARE(snapshot.live.first().rateHistory.first(), 6.0);
+    QCOMPARE(snapshot.live.first().rateHistory.last(), 35.0);
+    ConversationsModel model;
+    model.setRows(snapshot.live);
+    QCOMPARE(model.data(model.index(0), ConversationsModel::RateHistoryRole).toList().size(), 30);
+
+    row.bytesIn = 1; // Counter resets discard the old graph as well as the rate.
+    snapshot.live = {row};
+    sampler.sample(snapshot, 36);
+    QVERIFY(snapshot.live.first().rateHistory.isEmpty());
+    QVERIFY(!snapshot.live.first().rateValid);
+
+    snapshot.live.clear();
+    sampler.sample(snapshot, 37);
+    snapshot.live = {row};
+    sampler.sample(snapshot, 38);
+    QVERIFY(snapshot.live.first().rateHistory.isEmpty());
 }
 
 void DataTests::failedReadDoesNotModifySnapshot()
