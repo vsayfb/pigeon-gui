@@ -1,4 +1,5 @@
 #include "app/AppController.h"
+#include "app/CaptureController.h"
 #include "app/AppIconProvider.h"
 
 #include <QCommandLineOption>
@@ -47,9 +48,11 @@ int main(int argc, char *argv[])
                                    QStringLiteral("Wait before rendering a preview"),
                                    QStringLiteral("milliseconds"), QStringLiteral("1800"));
     arguments.addOption(delayOption);
+    arguments.addOption({QStringLiteral("preview-interfaces"), QStringLiteral("Open capture source dialog in a preview")});
     arguments.process(app);
 
     pigeon::AppController controller;
+    pigeon::CaptureController captureController;
     if (arguments.isSet(databaseOption))
         controller.selectDatabase(arguments.value(databaseOption));
 
@@ -64,6 +67,7 @@ int main(int argc, char *argv[])
                          qmlWarnings.append(warnings);
                      });
     engine.rootContext()->setContextProperty(QStringLiteral("readerController"), &controller);
+    engine.rootContext()->setContextProperty(QStringLiteral("captureController"), &captureController);
     engine.load(QUrl(QStringLiteral("qrc:/qt/qml/Pigeon/Gui/Main.qml")));
 
     if (engine.rootObjects().isEmpty())
@@ -77,6 +81,13 @@ int main(int argc, char *argv[])
         window->setProperty("darkTheme", arguments.isSet(QStringLiteral("preview-dark")));
         window->setWidth(qBound(620, arguments.value(widthOption).toInt(), 2400));
         window->setProperty("currentPage", qBound(0, arguments.value(pageOption).toInt(), 4));
+        if (arguments.isSet(QStringLiteral("preview-interfaces"))) {
+            QTimer::singleShot(200, window, [window] {
+                auto *dialog = window->findChild<QObject *>(QStringLiteral("captureInterfaceDialog"));
+                if (dialog)
+                    QMetaObject::invokeMethod(dialog, "open");
+            });
+        }
         QTimer::singleShot(qBound(100, arguments.value(delayOption).toInt(), 60000), window, [&app, window, &arguments, &previewOption] {
             const bool saved = window->grabWindow().save(arguments.value(previewOption));
             app.exit(saved ? EXIT_SUCCESS : EXIT_FAILURE);
@@ -100,6 +111,11 @@ int main(int argc, char *argv[])
             });
         }
 
+        QTimer::singleShot(1550, window, [window] {
+            auto *dialog = window->findChild<QObject *>(QStringLiteral("captureInterfaceDialog"));
+            if (dialog)
+                QMetaObject::invokeMethod(dialog, "open");
+        });
         QTimer::singleShot(1750, &app, &QCoreApplication::quit);
         const int result = app.exec();
         for (const QQmlError &warning : std::as_const(qmlWarnings))

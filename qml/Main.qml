@@ -31,6 +31,70 @@ ApplicationWindow {
                                    qsTr("Top Traffic"), qsTr("Applications"), qsTr("New Endpoints")]
     readonly property var symbols: ["▦", "∿", "▥", "▤", "◎"]
 
+    Binding {
+        target: captureController
+        property: "databasePath"
+        value: readerController.databasePath
+    }
+
+    Dialog {
+        id: captureDialog
+        objectName: "captureInterfaceDialog"
+        title: qsTr("Capture source")
+        anchors.centerIn: parent
+        width: Math.min(root.width - 32, 580)
+        height: Math.min(root.height - 32, 420)
+        modal: true
+        standardButtons: Dialog.Close
+        onOpened: captureController.refresh()
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 12
+            Label {
+                Layout.fillWidth: true
+                text: captureController.status
+                wrapMode: Text.Wrap
+                color: Theme.textPrimary
+            }
+            RowLayout {
+                ActionButton {
+                    text: qsTr("Automatic")
+                    enabled: !captureController.busy
+                    onClicked: captureController.selectInterface("")
+                }
+                ActionButton {
+                    text: qsTr("Refresh interfaces")
+                    enabled: !captureController.busy
+                    onClicked: captureController.refresh()
+                }
+                BusyIndicator { running: captureController.busy; implicitWidth: 30; implicitHeight: 30 }
+            }
+            ListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                model: captureController.interfaces
+                spacing: 4
+                ScrollBar.vertical: ScrollBar { }
+                delegate: ItemDelegate {
+                    required property var modelData
+                    width: ListView.view.width
+                    enabled: !captureController.busy && modelData.active && modelData.supported
+                    text: modelData.name + (modelData.name === captureController.currentInterface ? qsTr(" [current]") : "")
+                          + " — " + modelData.state
+                    onClicked: captureController.selectInterface(modelData.name)
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Changes the running collector. Recorded history is preserved. Automatic selects once; it does not follow route changes.")
+                wrapMode: Text.Wrap
+                font.pixelSize: Theme.textPixels(11)
+                color: Theme.textSecondary
+            }
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -147,6 +211,11 @@ ApplicationWindow {
                             font.weight: Font.DemiBold
                             color: Theme.textPrimary
                         }
+                    }
+                    ActionButton {
+                        text: qsTr("Interfaces")
+                        Accessible.name: qsTr("Choose collector capture interface")
+                        onClicked: captureDialog.open()
                     }
                     ActionButton {
                         text: readerController.paused ? qsTr("Resume") : qsTr("Pause")

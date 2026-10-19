@@ -57,3 +57,19 @@ destinations. Its byte totals include opaque protection overhead. Native and
 UDP-encapsulated ESP share the collector's protocol-50 aggregate; IKE/keepalive
 traffic remains UDP. VLAN tags are decoded by the collector and do not require
 new GUI columns. Restart the viewer after the collector schema upgrade.
+
+Capture source control (Linux)
+------------------------------
+
+The **Interfaces** button lists the running collector's current source and
+active/support status. Choose **Automatic** or an active supported interface.
+The collector prepares the new capture and flushes pending traffic before
+switching; recorded history stays in SQLite. Automatic selects once, rather
+than following later route changes. A failed preparation keeps the old source.
+
+This requires the updated collector, running against the selected database on
+the same machine. It uses `<canonical database path>.control`, a local Unix
+socket, without writing SQLite or starting a privileged process. The collector
+authorizes root and its launching user (`SUDO_UID` when started with sudo).
+Old collectors, copied databases and other platforms remain viewable; capture
+control reports unavailable. Database paths must fit the Unix socket path limit.
