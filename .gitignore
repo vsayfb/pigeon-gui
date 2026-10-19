@@ -1,0 +1,55 @@
+# CMake and IDE build directories
+/build/
+/build-*/
+/cmake-build-*/
+/out/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+
+# Qt Creator and editor state
+*.user
+*.user.*
+*.autosave
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Generated Qt files and binaries
+*_autogen/
+_autogen/
+*.qmlc
+*.jsc
+*.rcc
+*.qrc.dep
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.app/
+*.dSYM/
+
+# Runtime capture databases (including WAL sidecars)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Logs and platform artifacts
+*.log
+.DS_Store
+Thumbs.db
