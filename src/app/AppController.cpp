@@ -147,6 +147,21 @@ void AppController::selectDatabase(const QString &requestedPath)
         requestRefresh();
 }
 
+void AppController::retryRead()
+{
+    if (m_path.isEmpty())
+        return;
+
+    // A retry is explicit: it also resumes a paused reader. If a query is
+    // already running, queue a fresh query rather than overlapping SQLite work.
+    m_paused = false;
+    m_pending = true;
+    m_status = QStringLiteral("Retrying database read…");
+    emit stateChanged();
+    if (!m_inFlight)
+        requestRefresh();
+}
+
 void AppController::requestRefresh()
 {
     if (m_path.isEmpty() || m_inFlight || m_paused)

@@ -3,6 +3,15 @@ pragma Singleton
 import QtQuick
 
 QtObject {
+    // Follow larger platform fonts without shrinking the established layout.
+    // The bounded factor helps fixed-width traffic tables stay usable.
+    readonly property real textScale: Qt.application.font.pointSize > 10
+        ? Math.min(1.4, Qt.application.font.pointSize / 10) : 1
+
+    function textPixels(base) {
+        return Math.round(base * textScale)
+    }
+
     readonly property color background: "#101827"
     readonly property color sidebar: "#151F30"
     readonly property color surface: "#1C293B"

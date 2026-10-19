@@ -19,14 +19,14 @@ SurfaceCard {
         Text {
             Layout.fillWidth: true
             text: metric.label
-            font.pixelSize: 12
+            font.pixelSize: Theme.textPixels(12)
             color: Theme.textSecondary
             elide: Text.ElideRight
         }
         Text {
             Layout.fillWidth: true
             text: metric.value
-            font.pixelSize: 23
+            font.pixelSize: Theme.textPixels(23)
             font.weight: Font.DemiBold
             color: metric.valueColor
             elide: Text.ElideRight
@@ -37,7 +37,7 @@ SurfaceCard {
         Text {
             Layout.fillWidth: true
             text: metric.annotation
-            font.pixelSize: 11
+            font.pixelSize: Theme.textPixels(11)
             color: Theme.textMuted
             elide: Text.ElideRight
         }

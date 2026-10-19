@@ -31,14 +31,14 @@ Item {
                         Layout.fillWidth: true
                         text: qsTr("New to this database · 200 most recently first observed")
                         color: Theme.textPrimary
-                        font.pixelSize: 14
+                        font.pixelSize: Theme.textPixels(14)
                         font.weight: Font.DemiBold
                     }
                     Text {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         text: qsTr("Each remote IP appears once across applications, ports and local addresses. First seen means earliest recorded observation, not when an internet endpoint was created.")
-                        font.pixelSize: 12
+                        font.pixelSize: Theme.textPixels(12)
                         color: Theme.textSecondary
                     }
                 }
@@ -52,7 +52,7 @@ Item {
                 Layout.fillWidth: true
                 text: qsTr("Names are historical observed DNS associations. Missing names are normal.")
                 color: Theme.textMuted
-                font.pixelSize: 11
+                font.pixelSize: Theme.textPixels(11)
                 wrapMode: Text.WordWrap
             }
         }

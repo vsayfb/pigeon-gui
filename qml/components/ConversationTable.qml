@@ -39,7 +39,7 @@ SurfaceCard {
 
                 Rectangle {
                     width: parent.width
-                    height: 45
+                    height: Math.max(45, Theme.textPixels(40))
                     color: Theme.surfaceRaised
                     radius: 12
                     Row {
@@ -57,11 +57,24 @@ SurfaceCard {
                 ListView {
                     id: list
                     width: parent.width
-                    height: parent.height - 45
+                    height: parent.height - Math.max(45, Theme.textPixels(40))
                     clip: true
                     model: table.sourceModel
                     activeFocusOnTab: true
-                    Keys.onReturnPressed: {
+                Accessible.name: qsTr("Conversations list")
+                Accessible.description: qsTr("Use Up and Down to select a row, Left and Right to scroll columns, and Enter to open it")
+                Keys.onLeftPressed: horizontal.contentX = Math.max(0, horizontal.contentX - 120)
+                Keys.onRightPressed: horizontal.contentX = Math.min(
+                    horizontal.contentWidth - horizontal.width, horizontal.contentX + 120)
+                    highlightMoveDuration: 0
+                highlight: Rectangle {
+                    visible: list.activeFocus && list.count > 0
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Theme.accent
+                    radius: 6
+                }
+                Keys.onReturnPressed: {
                         if (list.currentItem)
                             table.conversationActivated(list.currentItem.identity)
                     }
@@ -90,10 +103,10 @@ SurfaceCard {
                         required property int index
 
                         width: list.width
-                        height: 53
+                        height: Math.max(53, Theme.textPixels(47))
                         color: readerController.selectedIdentity === row.identity
                             ? Theme.accentSurface : index % 2 ? Theme.rowAlternate : Theme.surface
-                        border.width: rowHover.hovered ? 1 : 0
+                        border.width: rowHover.hovered || (list.activeFocus && list.currentIndex === index) ? 2 : 0
                         border.color: Theme.accent
                         HoverHandler { id: rowHover }
                         TapHandler {

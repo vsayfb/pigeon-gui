@@ -24,7 +24,7 @@ ComboBox {
         leftPadding: 9
         rightPadding: 23
         text: combo.displayText
-        font.pixelSize: 12
+        font.pixelSize: Theme.textPixels(12)
         color: Theme.textPrimary
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight

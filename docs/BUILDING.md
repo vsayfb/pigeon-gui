@@ -1,103 +1,90 @@
-# Building the standalone GUI
+# Building and validating Pigeon GUI
+
+The collector and GUI are separate applications. Pigeon GUI only opens an
+**existing schema-v4 SQLite database**; neither tests nor startup require a
+running collector or capture privileges.
 
 ## Requirements
 
-- CMake 3.21+, a C++17 compiler, and Qt 6.4 or newer
-- Qt modules: Quick, Quick Controls 2, SQL (including the QSQLITE driver), Network
-- Qt Test (normally part of the Qt Base development package) when building tests
+- CMake 3.21+, C++17 compiler
+- Qt 6.4+ with Quick, Quick Controls 2, SQL/SQLite plugin and Network
+- Qt Test for C++ tests; Python 3 for fixture and offscreen startup tests
 
-On Debian/Ubuntu, a typical development setup is `qt6-base-dev`,
-`qt6-declarative-dev`, and `libqt6sql6-sqlite`. QML Quick Controls must also
-be available at runtime. The GUI never links to or launches the collector.
+On Debian/Ubuntu, a typical setup is:
 
-## Build, test, run
+```sh
+sudo apt install cmake g++ qt6-base-dev qt6-declarative-dev libqt6sql6-sqlite \
+  qml6-module-qtquick qml6-module-qtquick-controls \
+  qml6-module-qtquick-layouts qml6-module-qtquick-window \
+  qml6-module-qtqml-workerscript
+```
+
+If Qt is installed outside system paths, add
+`-DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<kit>` to configuration.
+
+## Build and test
 
 ```sh
 cmake -S . -B build
-cmake --build build -j
+cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ./build/pigeon-gui --database /absolute/path/to/existing-pigeon.db
 ```
 
-Alternatively, launch without `--database` and enter a database path in the
-window. Only an **existing** schema-v4 SQLite file is accepted. Failed reads
-show an error while retaining the most recent good snapshot. The app may run
-without a database; no database is created by starting it.
+Launch without `--database` to select a path in the application. When a read
+fails, the last good snapshot remains displayed with an error banner. Use
+**Retry** after fixing the problem, even when the database path has not changed.
+Database reads are read-only. Unresolved application names are displayed as
+"Unresolved" and retain their empty-string identity during drill-down.
 
-If Qt lives outside the normal CMake search path:
+The tests are:
 
-```sh
-cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/<kit>
-```
+- `pigeon-data`: SQL, IPv4/IPv6, rates and stable-model regression checks.
+- `pigeon-controller`: filter/selection, pause, stale generations and same-path retry.
+- `pigeon-gui-fixture`: isolated Python fixture checks.
+- `pigeon-qml-startup`: offscreen launch without a database and with a **temporary**
+  fixture. Exercises each of the five views at 1240×780 and 700×600 and fails on
+  engine-reported QML warnings. This tests QML creation, not visual quality.
 
-Use `-DBUILD_TESTING=OFF` to skip the Qt Test dependency; this does not disable
-runtime SQLite access. Qt SQL must have the `QSQLITE` driver installed.
-
-On Windows, select a Qt kit matching your compiler (MSVC/MinGW); `windeployqt`
-helps bundle the platform/SQL/QML plugins. On macOS use the matching Qt kit and
-`macdeployqt`; the target is a `.app` bundle. Linux requires Qt's xcb or
-Wayland platform plugin and Quick Controls runtime. Deployment validation and
-packaging remain follow-up work.
-
-## Slice-2 test coverage
-
-The `pigeon-data` CTest target constructs disposable schema-v4 SQLite fixtures,
-including IPv4/IPv6 addresses, unresolved applications, integers greater than
-2^53, rate resets, and a stable-model-index check. Tests never touch a collector
-or an actual capture database. Slice 3 displays these models across the dashboard pages, while interactive
-search, sorting, drill-down and pause remain in the next reviewed slice.
-
-## Slice-3 dashboard verification
-
-Make a **new disposable** database (the generator refuses to overwrite a file):
+For manual smoke checks on a headless Linux runner:
 
 ```sh
-python3 tests/fixtures/create_demo_db.py /tmp/pigeon-gui-screen-test.db
-./build/pigeon-gui --database /tmp/pigeon-gui-screen-test.db
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
+    ./build/pigeon-gui --check-qml
 ```
 
-The fixture includes recent and old conversations, IPv4 and IPv6, an unresolved
-application, long observed DNS names, mixed direction arrows, and an integer
-payload counter greater than 2^53. It never uses the actual collector database.
-On Overview, Live should show recent rows within 30 seconds of fixture creation;
-Top should include old rows. A static fixture can give measured **zero** rate
-after the second sample, which must not be confused with the waiting state.
+On a desktop, create a **new disposable** database for screenshots:
 
-Visually inspect the five pages at approximately 1240×780 and 700×600,
-including horizontal table scrolling, long name tooltips, IPv6, the empty
-SQLite database state, and a bad database path after a successful load. The
-chart has no stored history; its samples begin when this viewer opens. Capture
-screenshots using your desktop's screenshot tool for review. A headless test
-run can use `QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software`, but this is
-not a substitute for visual inspection on the real display server.
+```sh
+python3 tests/fixtures/create_demo_db.py /tmp/new-pigeon-gui-fixture.db
+./build/pigeon-gui --database /tmp/new-pigeon-gui-fixture.db
+```
 
-The optional `pigeon-gui-fixture` CTest checks the Python fixture itself.
-The Qt data tests run as `pigeon-data`. Commit 4 adds `pigeon-controller`
-for asynchronous filter changes, exact unresolved-application drill-down,
-selection identity, pause/resume, and database-switch behavior. There is not
-an automated QML visual-regression suite yet.
+The generator refuses to overwrite an existing database. Never use a live
+collector database in a test. For older capture timestamps, select the
+**All recorded** recency filter in Live; old cumulative totals are not
+historical traffic rates. Rates and charts begin with this viewer session.
 
-## Commit-4 interaction checks
+## Desktop review checklist
 
-In **Applications**, choose an application, including **Unresolved**. The app
-should switch to Top Traffic and display only the selected application's
-conversations. Text search is cleared; protocol and family constraints remain.
-Use **Remove application** to return to all conversations.
+Inspect all five views at both 1240×780 and 700×600 (or similar sizes):
 
-Live supports 10-, 30-, 120-second and all-recorded recency scopes. Its rate
-ranking is independent of the cumulative ranking used by Top and Applications.
-Live rates rank the 200 newest matches; waiting rows are ranked below measured
-rows. Endpoints ignore application/protocol restrictions and retain their global
-first-seen order. Overview and Applications remain unfiltered.
+1. Resize and use the horizontal compact navigation; all five tabs should
+   remain available, including via keyboard Tab.
+2. Use Tab, Up/Down, Left/Right and Enter in conversation and application
+   tables; check the visible selection/focus state. Escape closes details.
+3. Inspect long observed names and IPv6 addresses with tooltips/details.
+4. Check waiting-vs-zero traffic rates and the viewer-session graph.
+5. Open an invalid database, then create/correct the **same** path and use
+   Retry. Confirm an earlier good snapshot remains shown after a read error.
+6. Verify focus, contrast and wrapping with OS text scaling and a HiDPI display.
 
-Use Tab to reach the table, arrow keys to choose a row, then Enter or Space to
-open conversation details (or an application drill-down). Escape closes the
-details drawer. The drawer shows exact cumulative counters, local and remote
-IP addresses, remote port/protocol, first/last seen timestamps and the observed
-DNS association as plain text. Pause freezes refreshes; filter changes while
-paused take effect on resume, and the next rate estimate may span the pause.
+## Platform status
 
-Before approving Commit 4, manually test a selected conversation while its
-ranking changes, both wide and narrow layouts, empty search results, switching
-databases during refresh, and read errors. Automated Qt compilation and QML
-visual tests must be run in a Qt-equipped environment.
+The GitHub Actions workflow validates the Linux build, CTest suite and
+headless QML component startup. It does not produce visual screenshots or
+constitute a full accessibility audit. Windows and macOS builds and packaging
+have **not** been validated by this workflow; use matching Qt kits, CMake and
+CTest on each platform, and perform the desktop checks above. On Windows,
+`windeployqt` can deploy plugins; on macOS use `macdeployqt` for `.app` bundles.
+Do not treat a successful Linux CI run as proof of Windows/macOS support.

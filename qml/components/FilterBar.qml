@@ -25,7 +25,7 @@ SurfaceCard {
                      : qsTr("Live / Top: text, protocol, IP family and exact application · 200-row limit")
                 wrapMode: Text.WordWrap
                 color: Theme.textSecondary
-                font.pixelSize: 11
+                font.pixelSize: Theme.textPixels(11)
             }
             Button {
                 text: qsTr("Clear filters")
@@ -133,7 +133,7 @@ SurfaceCard {
             Text {
                 text: qsTr("Exact application:")
                 color: Theme.textSecondary
-                font.pixelSize: 12
+                font.pixelSize: Theme.textPixels(12)
             }
             Text {
                 Layout.fillWidth: true
@@ -141,7 +141,7 @@ SurfaceCard {
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
                 color: Theme.accent
-                font.pixelSize: 12
+                font.pixelSize: Theme.textPixels(12)
             }
             Button {
                 text: qsTr("Remove application")
@@ -153,7 +153,7 @@ SurfaceCard {
             Layout.fillWidth: true
             visible: readerController.paused
             text: qsTr("Paused · filter changes apply when you resume")
-            font.pixelSize: 11
+            font.pixelSize: Theme.textPixels(11)
             color: Theme.textSecondary
         }
     }

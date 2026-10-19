@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Launch every GUI view offscreen against an isolated read-only SQLite fixture."""
+
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+from create_demo_db import create
+
+
+def check(command, env):
+    result = subprocess.run(command, capture_output=True, text=True,
+                            env=env, timeout=20, check=False)
+    output = result.stdout + result.stderr
+    if result.returncode != 0:
+        raise AssertionError(
+            f"GUI smoke test returned {result.returncode}: {command!r}\n{output}"
+        )
+
+    # Qt's engine catches most QML errors via QQmlEngine::warnings; verify
+    # stderr as well for JS ReferenceError diagnostics outside that signal.
+    for marker in ("ReferenceError:", "Type ", "Invalid property assignment:",
+                   "Cannot assign to non-existent property", "Binding loop detected"):
+        if marker in output:
+            raise AssertionError(f"QML startup output contains {marker!r}:\n{output}")
+
+
+def main():
+    if len(sys.argv) != 2:
+        raise SystemExit("Usage: test_gui_startup.py /path/to/pigeon-gui")
+
+    executable = str(Path(sys.argv[1]).resolve())
+    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", QT_QUICK_BACKEND="software")
+    with tempfile.TemporaryDirectory(prefix="pigeon-qml-test-") as tmp:
+        database = create(Path(tmp) / "fixture.db")
+        check([executable, "--check-qml", "--database", str(database)], env)
+        check([executable, "--check-qml"], env)
+
+
+if __name__ == "__main__":
+    main()

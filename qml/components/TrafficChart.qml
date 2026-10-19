@@ -35,13 +35,13 @@ SurfaceCard {
             Text {
                 Layout.fillWidth: true
                 text: qsTr("Traffic rates")
-                font.pixelSize: 16
+                font.pixelSize: Theme.textPixels(16)
                 font.weight: Font.DemiBold
                 color: Theme.textPrimary
             }
             Text {
                 text: qsTr("Viewer session · up to 60 samples")
-                font.pixelSize: 11
+                font.pixelSize: Theme.textPixels(11)
                 color: Theme.textSecondary
             }
         }
@@ -103,27 +103,27 @@ SurfaceCard {
             Text {
                 text: Format.size(chart.scale) + "/s"
                 color: Theme.textMuted
-                font.pixelSize: 11
+                font.pixelSize: Theme.textPixels(11)
             }
             Item { Layout.fillWidth: true }
             Text {
                 text: chart.duration > 0 ? qsTr("Past %1s · now").arg(chart.duration.toFixed(0))
                                           : qsTr("Awaiting rate samples")
                 color: Theme.textMuted
-                font.pixelSize: 11
+                font.pixelSize: Theme.textPixels(11)
             }
         }
         RowLayout {
             spacing: 18
             Rectangle { width: 14; height: 3; radius: 2; color: Theme.accent }
-            Text { text: qsTr("Download"); color: Theme.textSecondary; font.pixelSize: 12 }
+            Text { text: qsTr("Download"); color: Theme.textSecondary; font.pixelSize: Theme.textPixels(12) }
             Rectangle { width: 14; height: 3; radius: 2; color: Theme.positive }
-            Text { text: qsTr("Upload"); color: Theme.textSecondary; font.pixelSize: 12 }
+            Text { text: qsTr("Upload"); color: Theme.textSecondary; font.pixelSize: Theme.textPixels(12) }
             Item { Layout.fillWidth: true }
             Text {
                 visible: chart.history.length === 0
                 text: qsTr("Waiting for a second sample ≥ 1s later")
-                font.pixelSize: 11
+                font.pixelSize: Theme.textPixels(11)
                 color: Theme.warning
             }
         }

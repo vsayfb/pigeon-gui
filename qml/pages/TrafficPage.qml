@@ -37,7 +37,7 @@ Item {
                                 readerController.recentSeconds === 0 ? qsTr("All recorded")
                                 : qsTr("Last %1 seconds").arg(readerController.recentSeconds))
                             : qsTr("All recorded data · top 200 by cumulative ranking")
-                        font.pixelSize: 14
+                        font.pixelSize: Theme.textPixels(14)
                         font.weight: Font.DemiBold
                         color: Theme.textPrimary
                     }
@@ -47,7 +47,7 @@ Item {
                         text: page.live
                             ? qsTr("Estimated rates require a second sample at least one second later. An empty list does not mean the collector has stopped.")
                             : qsTr("Downloaded and uploaded values are lifetime transport-payload byte totals, not traffic within a recent time window.")
-                        font.pixelSize: 12
+                        font.pixelSize: Theme.textPixels(12)
                         color: Theme.textSecondary
                     }
                 }
@@ -70,7 +70,7 @@ Item {
             Text {
                 Layout.fillWidth: true
                 text: qsTr("Observed DNS names are historical associations, not verified endpoint ownership. Arrows indicate seen packet directions.")
-                font.pixelSize: 11
+                font.pixelSize: Theme.textPixels(11)
                 color: Theme.textMuted
                 wrapMode: Text.WordWrap
             }

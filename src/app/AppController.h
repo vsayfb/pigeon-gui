@@ -106,6 +106,7 @@ public:
     QVariantMap selectedDetails() const { return m_selectedDetails; }
 
     Q_INVOKABLE void selectDatabase(const QString &path);
+    Q_INVOKABLE void retryRead();
     Q_INVOKABLE void setSearch(const QString &search);
     Q_INVOKABLE void setProtocol(int protocol);
     Q_INVOKABLE void setFamily(int family);

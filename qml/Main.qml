@@ -47,7 +47,7 @@ ApplicationWindow {
                         Text {
                             anchors.centerIn: parent
                             text: "P"
-                            font.pixelSize: 23
+                            font.pixelSize: Theme.textPixels(23)
                             font.bold: true
                             color: Theme.accent
                         }
@@ -56,13 +56,13 @@ ApplicationWindow {
                         spacing: 1
                         Text {
                             text: "Pigeon"
-                            font.pixelSize: 20
+                            font.pixelSize: Theme.textPixels(20)
                             font.weight: Font.DemiBold
                             color: Theme.textPrimary
                         }
                         Text {
                             text: qsTr("NETWORK VIEWER")
-                            font.pixelSize: 10
+                            font.pixelSize: Theme.textPixels(10)
                             font.letterSpacing: 1.1
                             color: Theme.textMuted
                         }
@@ -72,7 +72,7 @@ ApplicationWindow {
                 Item { Layout.preferredHeight: 45 }
                 Text {
                     text: qsTr("WORKSPACE")
-                    font.pixelSize: 11
+                    font.pixelSize: Theme.textPixels(11)
                     font.letterSpacing: 1
                     color: Theme.textMuted
                 }
@@ -99,13 +99,13 @@ ApplicationWindow {
                 Text {
                     Layout.fillWidth: true
                     text: qsTr("READ-ONLY · SQLITE V4")
-                    font.pixelSize: 11
+                    font.pixelSize: Theme.textPixels(11)
                     color: Theme.textSecondary
                 }
                 Text {
                     Layout.fillWidth: true
                     text: qsTr("Independent of collector")
-                    font.pixelSize: 11
+                    font.pixelSize: Theme.textPixels(11)
                     color: Theme.textMuted
                 }
             }
@@ -134,14 +134,14 @@ ApplicationWindow {
                         Text {
                             visible: root.compact
                             text: qsTr("PIGEON")
-                            font.pixelSize: 11
+                            font.pixelSize: Theme.textPixels(11)
                             font.bold: true
                             font.letterSpacing: 1.4
                             color: Theme.accent
                         }
                         Text {
                             text: root.titles[root.currentPage]
-                            font.pixelSize: root.compact ? 23 : 27
+                            font.pixelSize: Theme.textPixels(root.compact ? 23 : 27)
                             font.weight: Font.DemiBold
                             color: Theme.textPrimary
                         }
@@ -164,7 +164,7 @@ ApplicationWindow {
                                 : readerController.paused ? qsTr("Paused")
                                 : readerController.hasSnapshot ? qsTr("Read-only") : qsTr("No data")
                             color: readerController.error.length > 0 ? Theme.danger : Theme.accent
-                            font.pixelSize: 12
+                            font.pixelSize: Theme.textPixels(12)
                             font.weight: Font.Medium
                         }
                     }
@@ -210,9 +210,10 @@ ApplicationWindow {
 
                 Text {
                     Layout.fillWidth: true
+                    Accessible.name: qsTr("Database status: %1").arg(text)
                     text: readerController.status
                     color: Theme.textMuted
-                    font.pixelSize: 11
+                    font.pixelSize: Theme.textPixels(11)
                     elide: Text.ElideMiddle
                     ToolTip.visible: statusHover.hovered
                     ToolTip.text: text
@@ -222,40 +223,65 @@ ApplicationWindow {
                 Rectangle {
                     Layout.fillWidth: true
                     visible: readerController.error.length > 0
-                    implicitHeight: errorLabel.implicitHeight + 20
+                    implicitHeight: Math.max(56, errorLabel.implicitHeight + 20)
                     radius: 9
                     color: "#452A37"
                     border.color: "#A66070"
-                    Text {
-                        id: errorLabel
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
+                    RowLayout {
+                        anchors.fill: parent
                         anchors.margins: 10
-                        color: Theme.danger
-                        font.pixelSize: 12
-                        wrapMode: Text.WrapAnywhere
-                        text: readerController.error
+                        spacing: 12
+                        Text {
+                            id: errorLabel
+                            Layout.fillWidth: true
+                            color: Theme.danger
+                            font.pixelSize: Theme.textPixels(12)
+                            wrapMode: Text.WrapAnywhere
+                            text: readerController.error
+                            Accessible.name: qsTr("Database read error: %1").arg(text)
+                        }
+                        Button {
+                            text: qsTr("Retry")
+                            Accessible.name: qsTr("Retry reading the selected database")
+                            onClicked: readerController.retryRead()
+                        }
                     }
                 }
 
-                // On narrow windows navigation remains keyboard-accessible.
-                RowLayout {
+                // Keep five complete touch/focus targets at narrow widths.
+                // Horizontal scrolling also works with a trackpad or keyboard.
+                Flickable {
+                    id: compactNavigation
                     Layout.fillWidth: true
+                    Layout.preferredHeight: 48
                     visible: root.compact
-                    spacing: 2
-                    Repeater {
-                        model: 5
-                        NavTab {
-                            required property int index
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            Layout.preferredWidth: 110
-                            compact: true
-                            text: root.titles[index]
-                            symbol: ""
-                            selected: root.currentPage === index
-                            onClicked: root.currentPage = index
+                    clip: true
+                    contentWidth: compactTabs.width
+                    contentHeight: height
+                    flickableDirection: Flickable.HorizontalFlick
+                    boundsBehavior: Flickable.StopAtBounds
+                    ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                    Row {
+                        id: compactTabs
+                        spacing: 6
+                        Repeater {
+                            model: 5
+                            NavTab {
+                                required property int index
+                                width: 136
+                                height: 44
+                                compact: true
+                                text: root.titles[index]
+                                symbol: ""
+                                selected: root.currentPage === index
+                                onClicked: root.currentPage = index
+                                onActiveFocusChanged: {
+                                    if (activeFocus)
+                                        compactNavigation.contentX = Math.max(0,
+                                            Math.min(x - 8, compactNavigation.contentWidth - compactNavigation.width))
+                                }
+                            }
                         }
                     }
                 }

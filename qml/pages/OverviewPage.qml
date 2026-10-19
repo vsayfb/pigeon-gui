@@ -26,7 +26,7 @@ Item {
             Text {
                 Layout.fillWidth: true
                 text: qsTr("Cumulative traffic")
-                font.pixelSize: 14
+                font.pixelSize: Theme.textPixels(14)
                 font.weight: Font.DemiBold
                 color: Theme.textSecondary
             }
@@ -98,18 +98,18 @@ Item {
                 Text {
                     text: qsTr("Latest packet")
                     color: Theme.textSecondary
-                    font.pixelSize: 12
+                    font.pixelSize: Theme.textPixels(12)
                 }
                 Text {
                     Layout.fillWidth: true
                     text: readerController.lastPacketAge
                     color: Theme.textPrimary
-                    font.pixelSize: 12
+                    font.pixelSize: Theme.textPixels(12)
                 }
                 Text {
                     text: qsTr("Age is not collector status")
                     color: Theme.textMuted
-                    font.pixelSize: 11
+                    font.pixelSize: Theme.textPixels(11)
                 }
             }
 
@@ -125,13 +125,13 @@ Item {
                     Layout.fillWidth: true
                     text: qsTr("Recent conversations")
                     color: Theme.textPrimary
-                    font.pixelSize: 17
+                    font.pixelSize: Theme.textPixels(17)
                     font.weight: Font.DemiBold
                 }
                 Text {
                     text: qsTr("30s window · newest 200 matches")
                     color: Theme.textSecondary
-                    font.pixelSize: 11
+                    font.pixelSize: Theme.textPixels(11)
                 }
             }
 
@@ -147,7 +147,7 @@ Item {
                 Layout.fillWidth: true
                 text: qsTr("Rates and chart points are sampled after this viewer opens; the database contains cumulative totals only.")
                 color: Theme.textMuted
-                font.pixelSize: 11
+                font.pixelSize: Theme.textPixels(11)
                 wrapMode: Text.WordWrap
             }
         }

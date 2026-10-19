@@ -141,5 +141,10 @@ if(BUILD_TESTING)
     if(Python3_Interpreter_FOUND)
         add_test(NAME pigeon-gui-fixture
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/test_demo_db.py)
+        add_test(NAME pigeon-qml-startup
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/test_gui_startup.py
+                $<TARGET_FILE:pigeon-gui>)
+        set_tests_properties(pigeon-qml-startup PROPERTIES TIMEOUT 30)
     endif()
 endif()

@@ -57,6 +57,7 @@ class ControllerTests : public QObject {
 private slots:
     void filtersAndApplicationDrillDown();
     void pauseAndSupersededRefreshes();
+    void retrySameDatabasePathAfterFailure();
 };
 
 void ControllerTests::filtersAndApplicationDrillDown()
@@ -154,6 +155,32 @@ void ControllerTests::pauseAndSupersededRefreshes()
     QCOMPARE(top->rowCount(), 0);
     QTRY_VERIFY_WITH_TIMEOUT(!controller.error().isEmpty(), 3000);
     QVERIFY(!QFileInfo::exists(dir.filePath(QStringLiteral("missing.db"))));
+}
+
+void ControllerTests::retrySameDatabasePathAfterFailure()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("not-created-yet.db"));
+
+    AppController controller;
+    controller.selectDatabase(path);
+    QTRY_VERIFY_WITH_TIMEOUT(!controller.error().isEmpty(), 3000);
+    QVERIFY(!controller.hasSnapshot());
+    QVERIFY(!QFileInfo::exists(path)); // read-only attempts never create files
+
+    QVERIFY(makeFixture(path));
+    controller.retryRead();
+    QTRY_VERIFY_WITH_TIMEOUT(controller.hasSnapshot(), 3000);
+    QVERIFY(controller.error().isEmpty());
+    QCOMPARE(controller.databasePath(), path);
+    QCOMPARE(controller.topModel()->rowCount(), 3);
+
+    controller.setPaused(true);
+    QVERIFY(controller.paused());
+    controller.retryRead();
+    QTRY_VERIFY_WITH_TIMEOUT(!controller.paused(), 3000);
+    QVERIFY(controller.hasSnapshot());
 }
 
 QTEST_GUILESS_MAIN(ControllerTests)

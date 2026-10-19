@@ -1,0 +1,1223 @@
+diff --git a/.github/workflows/linux.yml b/.github/workflows/linux.yml
+new file mode 100644
+index 0000000..3f3a475
+--- /dev/null
++++ b/.github/workflows/linux.yml
+@@ -0,0 +1,30 @@
++name: Linux build and tests
++
++on:
++  push:
++  pull_request:
++
++jobs:
++  linux:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 15
++    steps:
++      - uses: actions/checkout@v4
++      - name: Install Qt 6 and QML runtime modules
++        run: |
++          sudo apt-get update
++          sudo apt-get install -y --no-install-recommends \
++            cmake ninja-build g++ python3 \
++            qt6-base-dev qt6-declarative-dev libqt6sql6-sqlite \
++            qml6-module-qtquick qml6-module-qtquick-controls \
++            qml6-module-qtquick-layouts qml6-module-qtquick-window \
++            qml6-module-qtqml-workerscript
++      - name: Configure
++        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
++      - name: Build
++        run: cmake --build build --parallel 2
++      - name: Test including offscreen QML startup
++        env:
++          QT_QPA_PLATFORM: offscreen
++          QT_QUICK_BACKEND: software
++        run: ctest --test-dir build --output-on-failure
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 6ee6594..b9ca572 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -141,5 +141,10 @@ if(BUILD_TESTING)
+     if(Python3_Interpreter_FOUND)
+         add_test(NAME pigeon-gui-fixture
+             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/test_demo_db.py)
++        add_test(NAME pigeon-qml-startup
++            COMMAND ${Python3_EXECUTABLE}
++                ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/test_gui_startup.py
++                $<TARGET_FILE:pigeon-gui>)
++        set_tests_properties(pigeon-qml-startup PROPERTIES TIMEOUT 30)
+     endif()
+ endif()
+diff --git a/docs/BUILDING.md b/docs/BUILDING.md
+index 9e5618a..6aa22a6 100644
+--- a/docs/BUILDING.md
++++ b/docs/BUILDING.md
+@@ -1,103 +1,90 @@
+-# Building the standalone GUI
++# Building and validating Pigeon GUI
+ 
+-## Requirements
++The collector and GUI are separate applications. Pigeon GUI only opens an
++**existing schema-v4 SQLite database**; neither tests nor startup require a
++running collector or capture privileges.
+ 
+-- CMake 3.21+, a C++17 compiler, and Qt 6.4 or newer
+-- Qt modules: Quick, Quick Controls 2, SQL (including the QSQLITE driver), Network
+-- Qt Test (normally part of the Qt Base development package) when building tests
++## Requirements
+ 
+-On Debian/Ubuntu, a typical development setup is `qt6-base-dev`,
+-`qt6-declarative-dev`, and `libqt6sql6-sqlite`. QML Quick Controls must also
+-be available at runtime. The GUI never links to or launches the collector.
++- CMake 3.21+, C++17 compiler
++- Qt 6.4+ with Quick, Quick Controls 2, SQL/SQLite plugin and Network
++- Qt Test for C++ tests; Python 3 for fixture and offscreen startup tests
+ 
+-## Build, test, run
++On Debian/Ubuntu, a typical setup is:
+ 
+ ```sh
+-cmake -S . -B build
+-cmake --build build -j
+-ctest --test-dir build --output-on-failure
+-./build/pigeon-gui --database /absolute/path/to/existing-pigeon.db
++sudo apt install cmake g++ qt6-base-dev qt6-declarative-dev libqt6sql6-sqlite \
++  qml6-module-qtquick qml6-module-qtquick-controls \
++  qml6-module-qtquick-layouts qml6-module-qtquick-window \
++  qml6-module-qtqml-workerscript
+ ```
+ 
+-Alternatively, launch without `--database` and enter a database path in the
+-window. Only an **existing** schema-v4 SQLite file is accepted. Failed reads
+-show an error while retaining the most recent good snapshot. The app may run
+-without a database; no database is created by starting it.
++If Qt is installed outside system paths, add
++`-DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<kit>` to configuration.
+ 
+-If Qt lives outside the normal CMake search path:
++## Build and test
+ 
+ ```sh
+-cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/<kit>
++cmake -S . -B build
++cmake --build build --parallel
++ctest --test-dir build --output-on-failure
++./build/pigeon-gui --database /absolute/path/to/existing-pigeon.db
+ ```
+ 
+-Use `-DBUILD_TESTING=OFF` to skip the Qt Test dependency; this does not disable
+-runtime SQLite access. Qt SQL must have the `QSQLITE` driver installed.
++Launch without `--database` to select a path in the application. When a read
++fails, the last good snapshot remains displayed with an error banner. Use
++**Retry** after fixing the problem, even when the database path has not changed.
++Database reads are read-only. Unresolved application names are displayed as
++"Unresolved" and retain their empty-string identity during drill-down.
+ 
+-On Windows, select a Qt kit matching your compiler (MSVC/MinGW); `windeployqt`
+-helps bundle the platform/SQL/QML plugins. On macOS use the matching Qt kit and
+-`macdeployqt`; the target is a `.app` bundle. Linux requires Qt's xcb or
+-Wayland platform plugin and Quick Controls runtime. Deployment validation and
+-packaging remain follow-up work.
++The tests are:
+ 
+-## Slice-2 test coverage
++- `pigeon-data`: SQL, IPv4/IPv6, rates and stable-model regression checks.
++- `pigeon-controller`: filter/selection, pause, stale generations and same-path retry.
++- `pigeon-gui-fixture`: isolated Python fixture checks.
++- `pigeon-qml-startup`: offscreen launch without a database and with a **temporary**
++  fixture. Exercises each of the five views at 1240×780 and 700×600 and fails on
++  engine-reported QML warnings. This tests QML creation, not visual quality.
+ 
+-The `pigeon-data` CTest target constructs disposable schema-v4 SQLite fixtures,
+-including IPv4/IPv6 addresses, unresolved applications, integers greater than
+-2^53, rate resets, and a stable-model-index check. Tests never touch a collector
+-or an actual capture database. Slice 3 displays these models across the dashboard pages, while interactive
+-search, sorting, drill-down and pause remain in the next reviewed slice.
++For manual smoke checks on a headless Linux runner:
+ 
+-## Slice-3 dashboard verification
++```sh
++QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
++    ./build/pigeon-gui --check-qml
++```
+ 
+-Make a **new disposable** database (the generator refuses to overwrite a file):
++On a desktop, create a **new disposable** database for screenshots:
+ 
+ ```sh
+-python3 tests/fixtures/create_demo_db.py /tmp/pigeon-gui-screen-test.db
+-./build/pigeon-gui --database /tmp/pigeon-gui-screen-test.db
++python3 tests/fixtures/create_demo_db.py /tmp/new-pigeon-gui-fixture.db
++./build/pigeon-gui --database /tmp/new-pigeon-gui-fixture.db
+ ```
+ 
+-The fixture includes recent and old conversations, IPv4 and IPv6, an unresolved
+-application, long observed DNS names, mixed direction arrows, and an integer
+-payload counter greater than 2^53. It never uses the actual collector database.
+-On Overview, Live should show recent rows within 30 seconds of fixture creation;
+-Top should include old rows. A static fixture can give measured **zero** rate
+-after the second sample, which must not be confused with the waiting state.
+-
+-Visually inspect the five pages at approximately 1240×780 and 700×600,
+-including horizontal table scrolling, long name tooltips, IPv6, the empty
+-SQLite database state, and a bad database path after a successful load. The
+-chart has no stored history; its samples begin when this viewer opens. Capture
+-screenshots using your desktop's screenshot tool for review. A headless test
+-run can use `QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software`, but this is
+-not a substitute for visual inspection on the real display server.
+-
+-The optional `pigeon-gui-fixture` CTest checks the Python fixture itself.
+-The Qt data tests run as `pigeon-data`. Commit 4 adds `pigeon-controller`
+-for asynchronous filter changes, exact unresolved-application drill-down,
+-selection identity, pause/resume, and database-switch behavior. There is not
+-an automated QML visual-regression suite yet.
+-
+-## Commit-4 interaction checks
+-
+-In **Applications**, choose an application, including **Unresolved**. The app
+-should switch to Top Traffic and display only the selected application's
+-conversations. Text search is cleared; protocol and family constraints remain.
+-Use **Remove application** to return to all conversations.
+-
+-Live supports 10-, 30-, 120-second and all-recorded recency scopes. Its rate
+-ranking is independent of the cumulative ranking used by Top and Applications.
+-Live rates rank the 200 newest matches; waiting rows are ranked below measured
+-rows. Endpoints ignore application/protocol restrictions and retain their global
+-first-seen order. Overview and Applications remain unfiltered.
+-
+-Use Tab to reach the table, arrow keys to choose a row, then Enter or Space to
+-open conversation details (or an application drill-down). Escape closes the
+-details drawer. The drawer shows exact cumulative counters, local and remote
+-IP addresses, remote port/protocol, first/last seen timestamps and the observed
+-DNS association as plain text. Pause freezes refreshes; filter changes while
+-paused take effect on resume, and the next rate estimate may span the pause.
+-
+-Before approving Commit 4, manually test a selected conversation while its
+-ranking changes, both wide and narrow layouts, empty search results, switching
+-databases during refresh, and read errors. Automated Qt compilation and QML
+-visual tests must be run in a Qt-equipped environment.
++The generator refuses to overwrite an existing database. Never use a live
++collector database in a test. For older capture timestamps, select the
++**All recorded** recency filter in Live; old cumulative totals are not
++historical traffic rates. Rates and charts begin with this viewer session.
++
++## Desktop review checklist
++
++Inspect all five views at both 1240×780 and 700×600 (or similar sizes):
++
++1. Resize and use the horizontal compact navigation; all five tabs should
++   remain available, including via keyboard Tab.
++2. Use Tab, Up/Down, Left/Right and Enter in conversation and application
++   tables; check the visible selection/focus state. Escape closes details.
++3. Inspect long observed names and IPv6 addresses with tooltips/details.
++4. Check waiting-vs-zero traffic rates and the viewer-session graph.
++5. Open an invalid database, then create/correct the **same** path and use
++   Retry. Confirm an earlier good snapshot remains shown after a read error.
++6. Verify focus, contrast and wrapping with OS text scaling and a HiDPI display.
++
++## Platform status
++
++The GitHub Actions workflow validates the Linux build, CTest suite and
++headless QML component startup. It does not produce visual screenshots or
++constitute a full accessibility audit. Windows and macOS builds and packaging
++have **not** been validated by this workflow; use matching Qt kits, CMake and
++CTest on each platform, and perform the desktop checks above. On Windows,
++`windeployqt` can deploy plugins; on macOS use `macdeployqt` for `.app` bundles.
++Do not treat a successful Linux CI run as proof of Windows/macOS support.
+diff --git a/qml/Main.qml b/qml/Main.qml
+index 43f2522..34c2ef3 100644
+--- a/qml/Main.qml
++++ b/qml/Main.qml
+@@ -47,7 +47,7 @@ ApplicationWindow {
+                         Text {
+                             anchors.centerIn: parent
+                             text: "P"
+-                            font.pixelSize: 23
++                            font.pixelSize: Theme.textPixels(23)
+                             font.bold: true
+                             color: Theme.accent
+                         }
+@@ -56,13 +56,13 @@ ApplicationWindow {
+                         spacing: 1
+                         Text {
+                             text: "Pigeon"
+-                            font.pixelSize: 20
++                            font.pixelSize: Theme.textPixels(20)
+                             font.weight: Font.DemiBold
+                             color: Theme.textPrimary
+                         }
+                         Text {
+                             text: qsTr("NETWORK VIEWER")
+-                            font.pixelSize: 10
++                            font.pixelSize: Theme.textPixels(10)
+                             font.letterSpacing: 1.1
+                             color: Theme.textMuted
+                         }
+@@ -72,7 +72,7 @@ ApplicationWindow {
+                 Item { Layout.preferredHeight: 45 }
+                 Text {
+                     text: qsTr("WORKSPACE")
+-                    font.pixelSize: 11
++                    font.pixelSize: Theme.textPixels(11)
+                     font.letterSpacing: 1
+                     color: Theme.textMuted
+                 }
+@@ -99,13 +99,13 @@ ApplicationWindow {
+                 Text {
+                     Layout.fillWidth: true
+                     text: qsTr("READ-ONLY · SQLITE V4")
+-                    font.pixelSize: 11
++                    font.pixelSize: Theme.textPixels(11)
+                     color: Theme.textSecondary
+                 }
+                 Text {
+                     Layout.fillWidth: true
+                     text: qsTr("Independent of collector")
+-                    font.pixelSize: 11
++                    font.pixelSize: Theme.textPixels(11)
+                     color: Theme.textMuted
+                 }
+             }
+@@ -134,14 +134,14 @@ ApplicationWindow {
+                         Text {
+                             visible: root.compact
+                             text: qsTr("PIGEON")
+-                            font.pixelSize: 11
++                            font.pixelSize: Theme.textPixels(11)
+                             font.bold: true
+                             font.letterSpacing: 1.4
+                             color: Theme.accent
+                         }
+                         Text {
+                             text: root.titles[root.currentPage]
+-                            font.pixelSize: root.compact ? 23 : 27
++                            font.pixelSize: Theme.textPixels(root.compact ? 23 : 27)
+                             font.weight: Font.DemiBold
+                             color: Theme.textPrimary
+                         }
+@@ -164,7 +164,7 @@ ApplicationWindow {
+                                 : readerController.paused ? qsTr("Paused")
+                                 : readerController.hasSnapshot ? qsTr("Read-only") : qsTr("No data")
+                             color: readerController.error.length > 0 ? Theme.danger : Theme.accent
+-                            font.pixelSize: 12
++                            font.pixelSize: Theme.textPixels(12)
+                             font.weight: Font.Medium
+                         }
+                     }
+@@ -210,9 +210,10 @@ ApplicationWindow {
+ 
+                 Text {
+                     Layout.fillWidth: true
++                    Accessible.name: qsTr("Database status: %1").arg(text)
+                     text: readerController.status
+                     color: Theme.textMuted
+-                    font.pixelSize: 11
++                    font.pixelSize: Theme.textPixels(11)
+                     elide: Text.ElideMiddle
+                     ToolTip.visible: statusHover.hovered
+                     ToolTip.text: text
+@@ -222,40 +223,65 @@ ApplicationWindow {
+                 Rectangle {
+                     Layout.fillWidth: true
+                     visible: readerController.error.length > 0
+-                    implicitHeight: errorLabel.implicitHeight + 20
++                    implicitHeight: Math.max(56, errorLabel.implicitHeight + 20)
+                     radius: 9
+                     color: "#452A37"
+                     border.color: "#A66070"
+-                    Text {
+-                        id: errorLabel
+-                        anchors.left: parent.left
+-                        anchors.right: parent.right
+-                        anchors.verticalCenter: parent.verticalCenter
++                    RowLayout {
++                        anchors.fill: parent
+                         anchors.margins: 10
+-                        color: Theme.danger
+-                        font.pixelSize: 12
+-                        wrapMode: Text.WrapAnywhere
+-                        text: readerController.error
++                        spacing: 12
++                        Text {
++                            id: errorLabel
++                            Layout.fillWidth: true
++                            color: Theme.danger
++                            font.pixelSize: Theme.textPixels(12)
++                            wrapMode: Text.WrapAnywhere
++                            text: readerController.error
++                            Accessible.name: qsTr("Database read error: %1").arg(text)
++                        }
++                        Button {
++                            text: qsTr("Retry")
++                            Accessible.name: qsTr("Retry reading the selected database")
++                            onClicked: readerController.retryRead()
++                        }
+                     }
+                 }
+ 
+-                // On narrow windows navigation remains keyboard-accessible.
+-                RowLayout {
++                // Keep five complete touch/focus targets at narrow widths.
++                // Horizontal scrolling also works with a trackpad or keyboard.
++                Flickable {
++                    id: compactNavigation
+                     Layout.fillWidth: true
++                    Layout.preferredHeight: 48
+                     visible: root.compact
+-                    spacing: 2
+-                    Repeater {
+-                        model: 5
+-                        NavTab {
+-                            required property int index
+-                            Layout.fillWidth: true
+-                            Layout.minimumWidth: 0
+-                            Layout.preferredWidth: 110
+-                            compact: true
+-                            text: root.titles[index]
+-                            symbol: ""
+-                            selected: root.currentPage === index
+-                            onClicked: root.currentPage = index
++                    clip: true
++                    contentWidth: compactTabs.width
++                    contentHeight: height
++                    flickableDirection: Flickable.HorizontalFlick
++                    boundsBehavior: Flickable.StopAtBounds
++                    ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
++
++                    Row {
++                        id: compactTabs
++                        spacing: 6
++                        Repeater {
++                            model: 5
++                            NavTab {
++                                required property int index
++                                width: 136
++                                height: 44
++                                compact: true
++                                text: root.titles[index]
++                                symbol: ""
++                                selected: root.currentPage === index
++                                onClicked: root.currentPage = index
++                                onActiveFocusChanged: {
++                                    if (activeFocus)
++                                        compactNavigation.contentX = Math.max(0,
++                                            Math.min(x - 8, compactNavigation.contentWidth - compactNavigation.width))
++                                }
++                            }
+                         }
+                     }
+                 }
+diff --git a/qml/components/ApplicationsTable.qml b/qml/components/ApplicationsTable.qml
+index 2d82448..fa991e4 100644
+--- a/qml/components/ApplicationsTable.qml
++++ b/qml/components/ApplicationsTable.qml
+@@ -31,7 +31,7 @@ SurfaceCard {
+                 color: Theme.surfaceRaised
+                 radius: 12
+                 width: parent.width
+-                height: 45
++                height: Math.max(45, Theme.textPixels(40))
+                 Row {
+                     anchors.fill: parent
+                     CellText { width: 225; height: parent.height; label: qsTr("APPLICATION"); ink: Theme.textMuted }
+@@ -46,12 +46,25 @@ SurfaceCard {
+             ListView {
+                 id: list
+                 width: parent.width
+-                height: parent.height - 45
++                height: parent.height - Math.max(45, Theme.textPixels(40))
+                 clip: true
+                 model: table.sourceModel
+                 boundsBehavior: Flickable.StopAtBounds
+                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                 activeFocusOnTab: true
++                Accessible.name: qsTr("Applications list")
++                Accessible.description: qsTr("Use Up and Down to select a row, Left and Right to scroll columns, and Enter to open it")
++                Keys.onLeftPressed: horizontal.contentX = Math.max(0, horizontal.contentX - 120)
++                Keys.onRightPressed: horizontal.contentX = Math.min(
++                    horizontal.contentWidth - horizontal.width, horizontal.contentX + 120)
++                highlightMoveDuration: 0
++                highlight: Rectangle {
++                    visible: list.activeFocus && list.count > 0
++                    color: "transparent"
++                    border.width: 2
++                    border.color: Theme.accent
++                    radius: 6
++                }
+                 Keys.onReturnPressed: {
+                     if (list.currentItem)
+                         table.applicationActivated(list.currentItem.identity)
+@@ -70,7 +83,7 @@ SurfaceCard {
+                     required property var remoteIps
+                     required property real lastSeen
+                     required property int index
+-                    width: list.width; height: 53
++                    width: list.width; height: Math.max(53, Theme.textPixels(47))
+                     color: index % 2 ? Theme.rowAlternate : Theme.surface
+                     TapHandler {
+                         onTapped: {
+@@ -80,7 +93,7 @@ SurfaceCard {
+                         }
+                     }
+                     HoverHandler { id: rowHover }
+-                    border.width: rowHover.hovered || activeFocus ? 1 : 0
++                    border.width: rowHover.hovered || (list.activeFocus && list.currentIndex === index) ? 2 : 0
+                     border.color: Theme.accent
+                     Row {
+                         anchors.fill: parent
+diff --git a/qml/components/CellText.qml b/qml/components/CellText.qml
+index 7799af4..b08364c 100644
+--- a/qml/components/CellText.qml
++++ b/qml/components/CellText.qml
+@@ -22,7 +22,7 @@ Item {
+         text: cell.label
+         textFormat: Text.PlainText
+         color: cell.ink
+-        font.pixelSize: 12
++        font.pixelSize: Theme.textPixels(12)
+         font.weight: cell.prominent ? Font.DemiBold : Font.Normal
+         elide: Text.ElideRight
+         horizontalAlignment: cell.rightAligned ? Text.AlignRight : Text.AlignLeft
+diff --git a/qml/components/ConversationDetails.qml b/qml/components/ConversationDetails.qml
+index cb6163f..4eb37be 100644
+--- a/qml/components/ConversationDetails.qml
++++ b/qml/components/ConversationDetails.qml
+@@ -30,10 +30,15 @@ Drawer {
+                     Layout.fillWidth: true
+                     text: qsTr("Conversation details")
+                     color: Theme.textPrimary
+-                    font.pixelSize: 20
++                    font.pixelSize: Theme.textPixels(20)
+                     font.weight: Font.DemiBold
+                 }
+-                Button { text: qsTr("Close"); onClicked: inspector.close() }
++                Button {
++                    id: closeDetailsButton
++                    text: qsTr("Close")
++                    Accessible.name: qsTr("Close conversation details")
++                    onClicked: inspector.close()
++                }
+             }
+             Text {
+                 Layout.fillWidth: true
+@@ -41,13 +46,13 @@ Drawer {
+                 text: qsTr("This conversation is outside the current list. Showing its last selected details.")
+                 color: Theme.textSecondary
+                 wrapMode: Text.WordWrap
+-                font.pixelSize: 12
++                font.pixelSize: Theme.textPixels(12)
+             }
+             Text {
+                 Layout.fillWidth: true
+                 text: parent.details.application || qsTr("No selected conversation")
+                 textFormat: Text.PlainText
+-                font.pixelSize: 17
++                font.pixelSize: Theme.textPixels(17)
+                 color: Theme.accent
+                 font.weight: Font.DemiBold
+                 wrapMode: Text.WrapAnywhere
+@@ -57,7 +62,7 @@ Drawer {
+                 text: qsTr("Observed DNS association, not verified service ownership")
+                 color: Theme.textSecondary
+                 wrapMode: Text.WordWrap
+-                font.pixelSize: 12
++                font.pixelSize: Theme.textPixels(12)
+             }
+             Repeater {
+                 model: [
+@@ -80,13 +85,13 @@ Drawer {
+                     Layout.fillWidth: true
+                     spacing: 3
+                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+-                    Text { text: modelData[0]; color: Theme.textMuted; font.pixelSize: 11 }
++                    Text { text: modelData[0]; color: Theme.textMuted; font.pixelSize: Theme.textPixels(11) }
+                     TextEdit {
+                         Layout.fillWidth: true
+                         Layout.preferredHeight: contentHeight
+                         text: String(modelData[1]); color: Theme.textPrimary
+                         wrapMode: TextEdit.WrapAnywhere
+-                        font.pixelSize: 13
++                        font.pixelSize: Theme.textPixels(13)
+                         textFormat: TextEdit.PlainText
+                         readOnly: true
+                         selectByMouse: true
+@@ -96,5 +101,6 @@ Drawer {
+             }
+         }
+     }
++    onOpened: closeDetailsButton.forceActiveFocus()
+     onClosed: readerController.clearSelection()
+ }
+diff --git a/qml/components/ConversationTable.qml b/qml/components/ConversationTable.qml
+index 2d5efb5..9bc88b2 100644
+--- a/qml/components/ConversationTable.qml
++++ b/qml/components/ConversationTable.qml
+@@ -39,7 +39,7 @@ SurfaceCard {
+ 
+                 Rectangle {
+                     width: parent.width
+-                    height: 45
++                    height: Math.max(45, Theme.textPixels(40))
+                     color: Theme.surfaceRaised
+                     radius: 12
+                     Row {
+@@ -57,11 +57,24 @@ SurfaceCard {
+                 ListView {
+                     id: list
+                     width: parent.width
+-                    height: parent.height - 45
++                    height: parent.height - Math.max(45, Theme.textPixels(40))
+                     clip: true
+                     model: table.sourceModel
+                     activeFocusOnTab: true
+-                    Keys.onReturnPressed: {
++                Accessible.name: qsTr("Conversations list")
++                Accessible.description: qsTr("Use Up and Down to select a row, Left and Right to scroll columns, and Enter to open it")
++                Keys.onLeftPressed: horizontal.contentX = Math.max(0, horizontal.contentX - 120)
++                Keys.onRightPressed: horizontal.contentX = Math.min(
++                    horizontal.contentWidth - horizontal.width, horizontal.contentX + 120)
++                    highlightMoveDuration: 0
++                highlight: Rectangle {
++                    visible: list.activeFocus && list.count > 0
++                    color: "transparent"
++                    border.width: 2
++                    border.color: Theme.accent
++                    radius: 6
++                }
++                Keys.onReturnPressed: {
+                         if (list.currentItem)
+                             table.conversationActivated(list.currentItem.identity)
+                     }
+@@ -90,10 +103,10 @@ SurfaceCard {
+                         required property int index
+ 
+                         width: list.width
+-                        height: 53
++                        height: Math.max(53, Theme.textPixels(47))
+                         color: readerController.selectedIdentity === row.identity
+                             ? Theme.accentSurface : index % 2 ? Theme.rowAlternate : Theme.surface
+-                        border.width: rowHover.hovered ? 1 : 0
++                        border.width: rowHover.hovered || (list.activeFocus && list.currentIndex === index) ? 2 : 0
+                         border.color: Theme.accent
+                         HoverHandler { id: rowHover }
+                         TapHandler {
+diff --git a/qml/components/EmptyState.qml b/qml/components/EmptyState.qml
+index 5f35868..5d4b2a9 100644
+--- a/qml/components/EmptyState.qml
++++ b/qml/components/EmptyState.qml
+@@ -16,13 +16,13 @@ Item {
+             Layout.alignment: Qt.AlignHCenter
+             text: "○"
+             color: Theme.accent
+-            font.pixelSize: 32
++            font.pixelSize: Theme.textPixels(32)
+         }
+         Text {
+             Layout.fillWidth: true
+             horizontalAlignment: Text.AlignHCenter
+             text: empty.heading
+-            font.pixelSize: 17
++            font.pixelSize: Theme.textPixels(17)
+             font.weight: Font.DemiBold
+             color: Theme.textPrimary
+         }
+@@ -31,7 +31,7 @@ Item {
+             horizontalAlignment: Text.AlignHCenter
+             wrapMode: Text.WordWrap
+             text: empty.explanation
+-            font.pixelSize: 12
++            font.pixelSize: Theme.textPixels(12)
+             color: Theme.textSecondary
+         }
+     }
+diff --git a/qml/components/EndpointsTable.qml b/qml/components/EndpointsTable.qml
+index d4a7e31..ca58a1d 100644
+--- a/qml/components/EndpointsTable.qml
++++ b/qml/components/EndpointsTable.qml
+@@ -28,7 +28,7 @@ SurfaceCard {
+                 color: Theme.surfaceRaised
+                 radius: 12
+                 width: parent.width
+-                height: 45
++                height: Math.max(45, Theme.textPixels(40))
+                 Row {
+                     anchors.fill: parent
+                     CellText { width: 295; height: parent.height; label: qsTr("REMOTE IP"); ink: Theme.textMuted }
+@@ -40,9 +40,23 @@ SurfaceCard {
+             ListView {
+                 id: list
+                 width: parent.width
+-                height: parent.height - 45
++                height: parent.height - Math.max(45, Theme.textPixels(40))
+                 clip: true
+                 model: table.sourceModel
++                activeFocusOnTab: true
++                Accessible.name: qsTr("New endpoints list")
++                Accessible.description: qsTr("Use Up and Down to navigate rows, Left and Right to scroll columns")
++                Keys.onLeftPressed: horizontal.contentX = Math.max(0, horizontal.contentX - 120)
++                Keys.onRightPressed: horizontal.contentX = Math.min(
++                    horizontal.contentWidth - horizontal.width, horizontal.contentX + 120)
++                highlightMoveDuration: 0
++                highlight: Rectangle {
++                    visible: list.activeFocus && list.count > 0
++                    color: "transparent"
++                    border.width: 2
++                    border.color: Theme.accent
++                    radius: 6
++                }
+                 boundsBehavior: Flickable.StopAtBounds
+                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                 delegate: Rectangle {
+@@ -52,7 +66,7 @@ SurfaceCard {
+                     required property real firstSeen
+                     required property real lastSeen
+                     required property int index
+-                    width: list.width; height: 53
++                    width: list.width; height: Math.max(53, Theme.textPixels(47))
+                     color: index % 2 ? Theme.rowAlternate : Theme.surface
+                     Row {
+                         anchors.fill: parent
+diff --git a/qml/components/FilterBar.qml b/qml/components/FilterBar.qml
+index 781d631..7ae1824 100644
+--- a/qml/components/FilterBar.qml
++++ b/qml/components/FilterBar.qml
+@@ -25,7 +25,7 @@ SurfaceCard {
+                      : qsTr("Live / Top: text, protocol, IP family and exact application · 200-row limit")
+                 wrapMode: Text.WordWrap
+                 color: Theme.textSecondary
+-                font.pixelSize: 11
++                font.pixelSize: Theme.textPixels(11)
+             }
+             Button {
+                 text: qsTr("Clear filters")
+@@ -133,7 +133,7 @@ SurfaceCard {
+             Text {
+                 text: qsTr("Exact application:")
+                 color: Theme.textSecondary
+-                font.pixelSize: 12
++                font.pixelSize: Theme.textPixels(12)
+             }
+             Text {
+                 Layout.fillWidth: true
+@@ -141,7 +141,7 @@ SurfaceCard {
+                 textFormat: Text.PlainText
+                 elide: Text.ElideRight
+                 color: Theme.accent
+-                font.pixelSize: 12
++                font.pixelSize: Theme.textPixels(12)
+             }
+             Button {
+                 text: qsTr("Remove application")
+@@ -153,7 +153,7 @@ SurfaceCard {
+             Layout.fillWidth: true
+             visible: readerController.paused
+             text: qsTr("Paused · filter changes apply when you resume")
+-            font.pixelSize: 11
++            font.pixelSize: Theme.textPixels(11)
+             color: Theme.textSecondary
+         }
+     }
+diff --git a/qml/components/MetricCard.qml b/qml/components/MetricCard.qml
+index 882ffb0..13cb7ba 100644
+--- a/qml/components/MetricCard.qml
++++ b/qml/components/MetricCard.qml
+@@ -19,14 +19,14 @@ SurfaceCard {
+         Text {
+             Layout.fillWidth: true
+             text: metric.label
+-            font.pixelSize: 12
++            font.pixelSize: Theme.textPixels(12)
+             color: Theme.textSecondary
+             elide: Text.ElideRight
+         }
+         Text {
+             Layout.fillWidth: true
+             text: metric.value
+-            font.pixelSize: 23
++            font.pixelSize: Theme.textPixels(23)
+             font.weight: Font.DemiBold
+             color: metric.valueColor
+             elide: Text.ElideRight
+@@ -37,7 +37,7 @@ SurfaceCard {
+         Text {
+             Layout.fillWidth: true
+             text: metric.annotation
+-            font.pixelSize: 11
++            font.pixelSize: Theme.textPixels(11)
+             color: Theme.textMuted
+             elide: Text.ElideRight
+         }
+diff --git a/qml/components/NavTab.qml b/qml/components/NavTab.qml
+index 0569ca3..f4d17b2 100644
+--- a/qml/components/NavTab.qml
++++ b/qml/components/NavTab.qml
+@@ -14,11 +14,12 @@ Button {
+     hoverEnabled: true
+     Accessible.name: text
+     Accessible.description: selected ? qsTr("Current section") : qsTr("Show section")
++    Accessible.role: Accessible.Button
+ 
+     background: Rectangle {
+         radius: 9
+         color: tab.selected ? Theme.accentSurface : tab.hovered ? Theme.surfaceRaised : "transparent"
+-        border.width: tab.activeFocus ? 1 : 0
++        border.width: tab.activeFocus ? 2 : 0
+         border.color: Theme.accent
+     }
+ 
+@@ -29,7 +30,7 @@ Button {
+ 
+         Text {
+             text: tab.symbol
+-            font.pixelSize: 17
++            font.pixelSize: Theme.textPixels(17)
+             color: tab.selected ? Theme.accent : Theme.textSecondary
+             verticalAlignment: Text.AlignVCenter
+         }
+diff --git a/qml/components/ScopeCombo.qml b/qml/components/ScopeCombo.qml
+index 71b4337..bae8eaa 100644
+--- a/qml/components/ScopeCombo.qml
++++ b/qml/components/ScopeCombo.qml
+@@ -24,7 +24,7 @@ ComboBox {
+         leftPadding: 9
+         rightPadding: 23
+         text: combo.displayText
+-        font.pixelSize: 12
++        font.pixelSize: Theme.textPixels(12)
+         color: Theme.textPrimary
+         verticalAlignment: Text.AlignVCenter
+         elide: Text.ElideRight
+diff --git a/qml/components/TrafficChart.qml b/qml/components/TrafficChart.qml
+index 152b7b9..d261170 100644
+--- a/qml/components/TrafficChart.qml
++++ b/qml/components/TrafficChart.qml
+@@ -35,13 +35,13 @@ SurfaceCard {
+             Text {
+                 Layout.fillWidth: true
+                 text: qsTr("Traffic rates")
+-                font.pixelSize: 16
++                font.pixelSize: Theme.textPixels(16)
+                 font.weight: Font.DemiBold
+                 color: Theme.textPrimary
+             }
+             Text {
+                 text: qsTr("Viewer session · up to 60 samples")
+-                font.pixelSize: 11
++                font.pixelSize: Theme.textPixels(11)
+                 color: Theme.textSecondary
+             }
+         }
+@@ -103,27 +103,27 @@ SurfaceCard {
+             Text {
+                 text: Format.size(chart.scale) + "/s"
+                 color: Theme.textMuted
+-                font.pixelSize: 11
++                font.pixelSize: Theme.textPixels(11)
+             }
+             Item { Layout.fillWidth: true }
+             Text {
+                 text: chart.duration > 0 ? qsTr("Past %1s · now").arg(chart.duration.toFixed(0))
+                                           : qsTr("Awaiting rate samples")
+                 color: Theme.textMuted
+-                font.pixelSize: 11
++                font.pixelSize: Theme.textPixels(11)
+             }
+         }
+         RowLayout {
+             spacing: 18
+             Rectangle { width: 14; height: 3; radius: 2; color: Theme.accent }
+-            Text { text: qsTr("Download"); color: Theme.textSecondary; font.pixelSize: 12 }
++            Text { text: qsTr("Download"); color: Theme.textSecondary; font.pixelSize: Theme.textPixels(12) }
+             Rectangle { width: 14; height: 3; radius: 2; color: Theme.positive }
+-            Text { text: qsTr("Upload"); color: Theme.textSecondary; font.pixelSize: 12 }
++            Text { text: qsTr("Upload"); color: Theme.textSecondary; font.pixelSize: Theme.textPixels(12) }
+             Item { Layout.fillWidth: true }
+             Text {
+                 visible: chart.history.length === 0
+                 text: qsTr("Waiting for a second sample ≥ 1s later")
+-                font.pixelSize: 11
++                font.pixelSize: Theme.textPixels(11)
+                 color: Theme.warning
+             }
+         }
+diff --git a/qml/pages/ApplicationsPage.qml b/qml/pages/ApplicationsPage.qml
+index 50d3cd6..a58fd37 100644
+--- a/qml/pages/ApplicationsPage.qml
++++ b/qml/pages/ApplicationsPage.qml
+@@ -34,7 +34,7 @@ Item {
+                         text: qsTr("Application ranking · top 200 by cumulative %1").arg(
+                             readerController.rankingSort === 1 ? qsTr("download") :
+                             readerController.rankingSort === 2 ? qsTr("upload") : qsTr("total"))
+-                        font.pixelSize: 14
++                        font.pixelSize: Theme.textPixels(14)
+                         font.weight: Font.DemiBold
+                         color: Theme.textPrimary
+                     }
+@@ -42,7 +42,7 @@ Item {
+                         Layout.fillWidth: true
+                         wrapMode: Text.WordWrap
+                         text: qsTr("Aggregates are computed over all stored conversations before the display limit. Totals are approximate; the empty application name appears as Unresolved.")
+-                        font.pixelSize: 12
++                        font.pixelSize: Theme.textPixels(12)
+                         color: Theme.textSecondary
+                     }
+                 }
+@@ -50,7 +50,7 @@ Item {
+ 
+             RowLayout {
+                 Layout.fillWidth: true
+-                Text { text: qsTr("Rank by"); color: Theme.textSecondary; font.pixelSize: 12 }
++                Text { text: qsTr("Rank by"); color: Theme.textSecondary; font.pixelSize: Theme.textPixels(12) }
+                 ScopeCombo {
+                     choices: [qsTr("Combined bytes"), qsTr("Downloaded"), qsTr("Uploaded")]
+                     selectedIndex: readerController.rankingSort
+@@ -69,7 +69,7 @@ Item {
+                 Layout.fillWidth: true
+                 text: qsTr("Select an application to show only its conversations in Top Traffic. Unresolved is an exact empty-name filter.")
+                 color: Theme.textMuted
+-                font.pixelSize: 11
++                font.pixelSize: Theme.textPixels(11)
+                 wrapMode: Text.WordWrap
+             }
+         }
+diff --git a/qml/pages/EndpointsPage.qml b/qml/pages/EndpointsPage.qml
+index 5be9890..511ef24 100644
+--- a/qml/pages/EndpointsPage.qml
++++ b/qml/pages/EndpointsPage.qml
+@@ -31,14 +31,14 @@ Item {
+                         Layout.fillWidth: true
+                         text: qsTr("New to this database · 200 most recently first observed")
+                         color: Theme.textPrimary
+-                        font.pixelSize: 14
++                        font.pixelSize: Theme.textPixels(14)
+                         font.weight: Font.DemiBold
+                     }
+                     Text {
+                         Layout.fillWidth: true
+                         wrapMode: Text.WordWrap
+                         text: qsTr("Each remote IP appears once across applications, ports and local addresses. First seen means earliest recorded observation, not when an internet endpoint was created.")
+-                        font.pixelSize: 12
++                        font.pixelSize: Theme.textPixels(12)
+                         color: Theme.textSecondary
+                     }
+                 }
+@@ -52,7 +52,7 @@ Item {
+                 Layout.fillWidth: true
+                 text: qsTr("Names are historical observed DNS associations. Missing names are normal.")
+                 color: Theme.textMuted
+-                font.pixelSize: 11
++                font.pixelSize: Theme.textPixels(11)
+                 wrapMode: Text.WordWrap
+             }
+         }
+diff --git a/qml/pages/OverviewPage.qml b/qml/pages/OverviewPage.qml
+index 102ff24..78cc0b2 100644
+--- a/qml/pages/OverviewPage.qml
++++ b/qml/pages/OverviewPage.qml
+@@ -26,7 +26,7 @@ Item {
+             Text {
+                 Layout.fillWidth: true
+                 text: qsTr("Cumulative traffic")
+-                font.pixelSize: 14
++                font.pixelSize: Theme.textPixels(14)
+                 font.weight: Font.DemiBold
+                 color: Theme.textSecondary
+             }
+@@ -98,18 +98,18 @@ Item {
+                 Text {
+                     text: qsTr("Latest packet")
+                     color: Theme.textSecondary
+-                    font.pixelSize: 12
++                    font.pixelSize: Theme.textPixels(12)
+                 }
+                 Text {
+                     Layout.fillWidth: true
+                     text: readerController.lastPacketAge
+                     color: Theme.textPrimary
+-                    font.pixelSize: 12
++                    font.pixelSize: Theme.textPixels(12)
+                 }
+                 Text {
+                     text: qsTr("Age is not collector status")
+                     color: Theme.textMuted
+-                    font.pixelSize: 11
++                    font.pixelSize: Theme.textPixels(11)
+                 }
+             }
+ 
+@@ -125,13 +125,13 @@ Item {
+                     Layout.fillWidth: true
+                     text: qsTr("Recent conversations")
+                     color: Theme.textPrimary
+-                    font.pixelSize: 17
++                    font.pixelSize: Theme.textPixels(17)
+                     font.weight: Font.DemiBold
+                 }
+                 Text {
+                     text: qsTr("30s window · newest 200 matches")
+                     color: Theme.textSecondary
+-                    font.pixelSize: 11
++                    font.pixelSize: Theme.textPixels(11)
+                 }
+             }
+ 
+@@ -147,7 +147,7 @@ Item {
+                 Layout.fillWidth: true
+                 text: qsTr("Rates and chart points are sampled after this viewer opens; the database contains cumulative totals only.")
+                 color: Theme.textMuted
+-                font.pixelSize: 11
++                font.pixelSize: Theme.textPixels(11)
+                 wrapMode: Text.WordWrap
+             }
+         }
+diff --git a/qml/pages/TrafficPage.qml b/qml/pages/TrafficPage.qml
+index 6ae7293..2cc49a2 100644
+--- a/qml/pages/TrafficPage.qml
++++ b/qml/pages/TrafficPage.qml
+@@ -37,7 +37,7 @@ Item {
+                                 readerController.recentSeconds === 0 ? qsTr("All recorded")
+                                 : qsTr("Last %1 seconds").arg(readerController.recentSeconds))
+                             : qsTr("All recorded data · top 200 by cumulative ranking")
+-                        font.pixelSize: 14
++                        font.pixelSize: Theme.textPixels(14)
+                         font.weight: Font.DemiBold
+                         color: Theme.textPrimary
+                     }
+@@ -47,7 +47,7 @@ Item {
+                         text: page.live
+                             ? qsTr("Estimated rates require a second sample at least one second later. An empty list does not mean the collector has stopped.")
+                             : qsTr("Downloaded and uploaded values are lifetime transport-payload byte totals, not traffic within a recent time window.")
+-                        font.pixelSize: 12
++                        font.pixelSize: Theme.textPixels(12)
+                         color: Theme.textSecondary
+                     }
+                 }
+@@ -70,7 +70,7 @@ Item {
+             Text {
+                 Layout.fillWidth: true
+                 text: qsTr("Observed DNS names are historical associations, not verified endpoint ownership. Arrows indicate seen packet directions.")
+-                font.pixelSize: 11
++                font.pixelSize: Theme.textPixels(11)
+                 color: Theme.textMuted
+                 wrapMode: Text.WordWrap
+             }
+diff --git a/qml/theme/Theme.qml b/qml/theme/Theme.qml
+index c685a7f..b5ef3d3 100644
+--- a/qml/theme/Theme.qml
++++ b/qml/theme/Theme.qml
+@@ -3,6 +3,15 @@ pragma Singleton
+ import QtQuick
+ 
+ QtObject {
++    // Follow larger platform fonts without shrinking the established layout.
++    // The bounded factor helps fixed-width traffic tables stay usable.
++    readonly property real textScale: Qt.application.font.pointSize > 10
++        ? Math.min(1.4, Qt.application.font.pointSize / 10) : 1
++
++    function textPixels(base) {
++        return Math.round(base * textScale)
++    }
++
+     readonly property color background: "#101827"
+     readonly property color sidebar: "#151F30"
+     readonly property color surface: "#1C293B"
+diff --git a/src/app/AppController.cpp b/src/app/AppController.cpp
+index cedf3e8..5c548e5 100644
+--- a/src/app/AppController.cpp
++++ b/src/app/AppController.cpp
+@@ -147,6 +147,21 @@ void AppController::selectDatabase(const QString &requestedPath)
+         requestRefresh();
+ }
+ 
++void AppController::retryRead()
++{
++    if (m_path.isEmpty())
++        return;
++
++    // A retry is explicit: it also resumes a paused reader. If a query is
++    // already running, queue a fresh query rather than overlapping SQLite work.
++    m_paused = false;
++    m_pending = true;
++    m_status = QStringLiteral("Retrying database read…");
++    emit stateChanged();
++    if (!m_inFlight)
++        requestRefresh();
++}
++
+ void AppController::requestRefresh()
+ {
+     if (m_path.isEmpty() || m_inFlight || m_paused)
+diff --git a/src/app/AppController.h b/src/app/AppController.h
+index fd81bfe..6a73375 100644
+--- a/src/app/AppController.h
++++ b/src/app/AppController.h
+@@ -106,6 +106,7 @@ public:
+     QVariantMap selectedDetails() const { return m_selectedDetails; }
+ 
+     Q_INVOKABLE void selectDatabase(const QString &path);
++    Q_INVOKABLE void retryRead();
+     Q_INVOKABLE void setSearch(const QString &search);
+     Q_INVOKABLE void setProtocol(int protocol);
+     Q_INVOKABLE void setFamily(int family);
+diff --git a/src/main.cpp b/src/main.cpp
+index a4958e9..41eb5d2 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -5,9 +5,15 @@
+ #include <QGuiApplication>
+ #include <QQmlContext>
+ #include <QQmlApplicationEngine>
++#include <QQmlError>
++#include <QQuickWindow>
++#include <QTimer>
+ #include <QUrl>
+ 
++#include <QDebug>
++
+ #include <cstdlib>
++#include <utility>
+ 
+ int main(int argc, char *argv[])
+ {
+@@ -22,6 +28,9 @@ int main(int argc, char *argv[])
+                                       QStringLiteral("Existing schema-v4 SQLite database"),
+                                       QStringLiteral("path"));
+     arguments.addOption(databaseOption);
++    QCommandLineOption checkQmlOption(QStringLiteral("check-qml"),
++                                      QStringLiteral("Check QML startup across all views and exit"));
++    arguments.addOption(checkQmlOption);
+     arguments.process(app);
+ 
+     pigeon::AppController controller;
+@@ -29,11 +38,36 @@ int main(int argc, char *argv[])
+         controller.selectDatabase(arguments.value(databaseOption));
+ 
+     QQmlApplicationEngine engine;
++    QList<QQmlError> qmlWarnings;
++    QObject::connect(&engine, &QQmlEngine::warnings, &engine,
++                     [&qmlWarnings](const QList<QQmlError> &warnings) {
++                         qmlWarnings.append(warnings);
++                     });
+     engine.rootContext()->setContextProperty(QStringLiteral("readerController"), &controller);
+     engine.load(QUrl(QStringLiteral("qrc:/qt/qml/Pigeon/Gui/Main.qml")));
+ 
+-    if (engine.rootObjects().isEmpty()) {
++    if (engine.rootObjects().isEmpty())
+         return EXIT_FAILURE;
++
++    if (arguments.isSet(checkQmlOption)) {
++        auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
++        if (!window)
++            return EXIT_FAILURE;
++
++        // Exercise every page and both layout widths. QML property errors
++        // from lazily instantiated view delegates are also reported here.
++        for (int page = 0; page < 5; ++page) {
++            QTimer::singleShot(100 * (page + 1), window, [window, page] {
++                window->setWidth(page % 2 ? 700 : 1240);
++                window->setHeight(page % 2 ? 600 : 780);
++                window->setProperty("currentPage", page);
++            });
++        }
++        QTimer::singleShot(750, &app, &QCoreApplication::quit);
++        const int result = app.exec();
++        for (const QQmlError &warning : std::as_const(qmlWarnings))
++            qCritical().noquote() << warning.toString();
++        return result == 0 && qmlWarnings.isEmpty() ? EXIT_SUCCESS : EXIT_FAILURE;
+     }
+ 
+     return app.exec();
+diff --git a/tests/fixtures/test_gui_startup.py b/tests/fixtures/test_gui_startup.py
+new file mode 100644
+index 0000000..c33192a
+--- /dev/null
++++ b/tests/fixtures/test_gui_startup.py
+@@ -0,0 +1,43 @@
++#!/usr/bin/env python3
++"""Launch every GUI view offscreen against an isolated read-only SQLite fixture."""
++
++import os
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++
++from create_demo_db import create
++
++
++def check(command, env):
++    result = subprocess.run(command, capture_output=True, text=True,
++                            env=env, timeout=20, check=False)
++    output = result.stdout + result.stderr
++    if result.returncode != 0:
++        raise AssertionError(
++            f"GUI smoke test returned {result.returncode}: {command!r}\n{output}"
++        )
++
++    # Qt's engine catches most QML errors via QQmlEngine::warnings; verify
++    # stderr as well for JS ReferenceError diagnostics outside that signal.
++    for marker in ("ReferenceError:", "Type ", "Invalid property assignment:",
++                   "Cannot assign to non-existent property", "Binding loop detected"):
++        if marker in output:
++            raise AssertionError(f"QML startup output contains {marker!r}:\n{output}")
++
++
++def main():
++    if len(sys.argv) != 2:
++        raise SystemExit("Usage: test_gui_startup.py /path/to/pigeon-gui")
++
++    executable = str(Path(sys.argv[1]).resolve())
++    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", QT_QUICK_BACKEND="software")
++    with tempfile.TemporaryDirectory(prefix="pigeon-qml-test-") as tmp:
++        database = create(Path(tmp) / "fixture.db")
++        check([executable, "--check-qml", "--database", str(database)], env)
++        check([executable, "--check-qml"], env)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tests/test_controller.cpp b/tests/test_controller.cpp
+index 9b6292e..c7f78eb 100644
+--- a/tests/test_controller.cpp
++++ b/tests/test_controller.cpp
+@@ -57,6 +57,7 @@ class ControllerTests : public QObject {
+ private slots:
+     void filtersAndApplicationDrillDown();
+     void pauseAndSupersededRefreshes();
++    void retrySameDatabasePathAfterFailure();
+ };
+ 
+ void ControllerTests::filtersAndApplicationDrillDown()
+@@ -156,5 +157,31 @@ void ControllerTests::pauseAndSupersededRefreshes()
+     QVERIFY(!QFileInfo::exists(dir.filePath(QStringLiteral("missing.db"))));
+ }
+ 
++void ControllerTests::retrySameDatabasePathAfterFailure()
++{
++    QTemporaryDir dir;
++    QVERIFY(dir.isValid());
++    const QString path = dir.filePath(QStringLiteral("not-created-yet.db"));
++
++    AppController controller;
++    controller.selectDatabase(path);
++    QTRY_VERIFY_WITH_TIMEOUT(!controller.error().isEmpty(), 3000);
++    QVERIFY(!controller.hasSnapshot());
++    QVERIFY(!QFileInfo::exists(path)); // read-only attempts never create files
++
++    QVERIFY(makeFixture(path));
++    controller.retryRead();
++    QTRY_VERIFY_WITH_TIMEOUT(controller.hasSnapshot(), 3000);
++    QVERIFY(controller.error().isEmpty());
++    QCOMPARE(controller.databasePath(), path);
++    QCOMPARE(controller.topModel()->rowCount(), 3);
++
++    controller.setPaused(true);
++    QVERIFY(controller.paused());
++    controller.retryRead();
++    QTRY_VERIFY_WITH_TIMEOUT(!controller.paused(), 3000);
++    QVERIFY(controller.hasSnapshot());
++}
++
+ QTEST_GUILESS_MAIN(ControllerTests)
+ #include "test_controller.moc"

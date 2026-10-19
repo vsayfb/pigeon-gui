@@ -34,7 +34,7 @@ Item {
                         text: qsTr("Application ranking · top 200 by cumulative %1").arg(
                             readerController.rankingSort === 1 ? qsTr("download") :
                             readerController.rankingSort === 2 ? qsTr("upload") : qsTr("total"))
-                        font.pixelSize: 14
+                        font.pixelSize: Theme.textPixels(14)
                         font.weight: Font.DemiBold
                         color: Theme.textPrimary
                     }
@@ -42,7 +42,7 @@ Item {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         text: qsTr("Aggregates are computed over all stored conversations before the display limit. Totals are approximate; the empty application name appears as Unresolved.")
-                        font.pixelSize: 12
+                        font.pixelSize: Theme.textPixels(12)
                         color: Theme.textSecondary
                     }
                 }
@@ -50,7 +50,7 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: qsTr("Rank by"); color: Theme.textSecondary; font.pixelSize: 12 }
+                Text { text: qsTr("Rank by"); color: Theme.textSecondary; font.pixelSize: Theme.textPixels(12) }
                 ScopeCombo {
                     choices: [qsTr("Combined bytes"), qsTr("Downloaded"), qsTr("Uploaded")]
                     selectedIndex: readerController.rankingSort
@@ -69,7 +69,7 @@ Item {
                 Layout.fillWidth: true
                 text: qsTr("Select an application to show only its conversations in Top Traffic. Unresolved is an exact empty-name filter.")
                 color: Theme.textMuted
-                font.pixelSize: 11
+                font.pixelSize: Theme.textPixels(11)
                 wrapMode: Text.WordWrap
             }
         }

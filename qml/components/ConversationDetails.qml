@@ -30,10 +30,15 @@ Drawer {
                     Layout.fillWidth: true
                     text: qsTr("Conversation details")
                     color: Theme.textPrimary
-                    font.pixelSize: 20
+                    font.pixelSize: Theme.textPixels(20)
                     font.weight: Font.DemiBold
                 }
-                Button { text: qsTr("Close"); onClicked: inspector.close() }
+                Button {
+                    id: closeDetailsButton
+                    text: qsTr("Close")
+                    Accessible.name: qsTr("Close conversation details")
+                    onClicked: inspector.close()
+                }
             }
             Text {
                 Layout.fillWidth: true
@@ -41,13 +46,13 @@ Drawer {
                 text: qsTr("This conversation is outside the current list. Showing its last selected details.")
                 color: Theme.textSecondary
                 wrapMode: Text.WordWrap
-                font.pixelSize: 12
+                font.pixelSize: Theme.textPixels(12)
             }
             Text {
                 Layout.fillWidth: true
                 text: parent.details.application || qsTr("No selected conversation")
                 textFormat: Text.PlainText
-                font.pixelSize: 17
+                font.pixelSize: Theme.textPixels(17)
                 color: Theme.accent
                 font.weight: Font.DemiBold
                 wrapMode: Text.WrapAnywhere
@@ -57,7 +62,7 @@ Drawer {
                 text: qsTr("Observed DNS association, not verified service ownership")
                 color: Theme.textSecondary
                 wrapMode: Text.WordWrap
-                font.pixelSize: 12
+                font.pixelSize: Theme.textPixels(12)
             }
             Repeater {
                 model: [
@@ -80,13 +85,13 @@ Drawer {
                     Layout.fillWidth: true
                     spacing: 3
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
-                    Text { text: modelData[0]; color: Theme.textMuted; font.pixelSize: 11 }
+                    Text { text: modelData[0]; color: Theme.textMuted; font.pixelSize: Theme.textPixels(11) }
                     TextEdit {
                         Layout.fillWidth: true
                         Layout.preferredHeight: contentHeight
                         text: String(modelData[1]); color: Theme.textPrimary
                         wrapMode: TextEdit.WrapAnywhere
-                        font.pixelSize: 13
+                        font.pixelSize: Theme.textPixels(13)
                         textFormat: TextEdit.PlainText
                         readOnly: true
                         selectByMouse: true
@@ -96,5 +101,6 @@ Drawer {
             }
         }
     }
+    onOpened: closeDetailsButton.forceActiveFocus()
     onClosed: readerController.clearSelection()
 }

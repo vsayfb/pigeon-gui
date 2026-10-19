@@ -16,13 +16,13 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             text: "○"
             color: Theme.accent
-            font.pixelSize: 32
+            font.pixelSize: Theme.textPixels(32)
         }
         Text {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
             text: empty.heading
-            font.pixelSize: 17
+            font.pixelSize: Theme.textPixels(17)
             font.weight: Font.DemiBold
             color: Theme.textPrimary
         }
@@ -31,7 +31,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
             text: empty.explanation
-            font.pixelSize: 12
+            font.pixelSize: Theme.textPixels(12)
             color: Theme.textSecondary
         }
     }

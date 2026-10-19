@@ -14,11 +14,12 @@ Button {
     hoverEnabled: true
     Accessible.name: text
     Accessible.description: selected ? qsTr("Current section") : qsTr("Show section")
+    Accessible.role: Accessible.Button
 
     background: Rectangle {
         radius: 9
         color: tab.selected ? Theme.accentSurface : tab.hovered ? Theme.surfaceRaised : "transparent"
-        border.width: tab.activeFocus ? 1 : 0
+        border.width: tab.activeFocus ? 2 : 0
         border.color: Theme.accent
     }
 
@@ -29,7 +30,7 @@ Button {
 
         Text {
             text: tab.symbol
-            font.pixelSize: 17
+            font.pixelSize: Theme.textPixels(17)
             color: tab.selected ? Theme.accent : Theme.textSecondary
             verticalAlignment: Text.AlignVCenter
         }
