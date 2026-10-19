@@ -363,6 +363,7 @@ void AppController::updateSelection()
             {QStringLiteral("remoteName"), row.remoteName},
             {QStringLiteral("remotePort"), row.remotePort},
             {QStringLiteral("protocol"), row.protocol},
+            {QStringLiteral("quic"), row.quic},
             {QStringLiteral("bytesDown"), QString::number(row.bytesIn)},
             {QStringLiteral("bytesUp"), QString::number(row.bytesOut)},
             {QStringLiteral("packetsDown"), QString::number(row.packetsIn)},

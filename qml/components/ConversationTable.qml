@@ -12,7 +12,7 @@ SurfaceCard {
     property string emptyTitle: qsTr("No matching conversations")
     property string emptyDetail: qsTr("No rows match the current scope.")
 
-    readonly property int tableWidth: 1110 + (live ? 100 : 0)
+    readonly property int tableWidth: 1135 + (live ? 100 : 0)
     readonly property real domainWidth: 220 + Math.max(0, horizontal.contentWidth - tableWidth) * 0.6
     readonly property real ipWidth: 190 + Math.max(0, horizontal.contentWidth - tableWidth) * 0.4
     implicitHeight: 420
@@ -51,7 +51,7 @@ SurfaceCard {
                         CellText { width: table.domainWidth; height: parent.height; label: qsTr("DOMAIN"); ink: Theme.textMuted }
                         CellText { width: table.ipWidth; height: parent.height; label: qsTr("IP"); ink: Theme.textMuted }
                         CellText { width: 55; height: parent.height; label: qsTr("PORT"); ink: Theme.textMuted }
-                        CellText { width: 75; height: parent.height; label: qsTr("PROTOCOL"); ink: Theme.textMuted }
+                        CellText { width: 100; height: parent.height; label: qsTr("PROTOCOL"); ink: Theme.textMuted }
                         CellText { width: 115; height: parent.height; label: table.live ? qsTr("DOWN / SEC") : qsTr("DOWNLOADED"); ink: Theme.textMuted; rightAligned: true }
                         CellText { width: 115; height: parent.height; label: table.live ? qsTr("UP / SEC") : qsTr("UPLOADED"); ink: Theme.textMuted; rightAligned: true }
                         CellText { width: 85; height: parent.height; label: qsTr("DIRECTION"); ink: Theme.textMuted }
@@ -98,6 +98,7 @@ SurfaceCard {
                         required property string remoteName
                         required property int remotePort
                         required property int protocol
+                        required property bool quic
                         required property string bytesDownExact
                         required property string bytesUpExact
                         required property var packetsDown
@@ -145,7 +146,8 @@ SurfaceCard {
                                 fullText: row.remoteIp + (Format.hasPorts(row.protocol) ? "\n" + qsTr("Remote port: %1").arg(row.remotePort) : "")
                             }
                             CellText { width: 55; height: parent.height; label: Format.hasPorts(row.protocol) ? String(row.remotePort) : "—" }
-                            CellText { width: 75; height: parent.height; label: Format.protocol(row.protocol) }
+                            CellText { width: 100; height: parent.height; label: Format.protocol(row.protocol, row.quic)
+                                fullText: row.quic ? qsTr("QUIC observed from bidirectional header evidence. Transport remains UDP; aggregate totals may include other UDP traffic.") : label }
                             CellText {
                                 width: 115; height: parent.height; rightAligned: true; ink: Theme.download
                                 label: table.live ? (row.ratesValid ? Format.speed(row.rateDown, true) : qsTr("Waiting"))

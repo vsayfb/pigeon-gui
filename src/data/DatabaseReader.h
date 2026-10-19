@@ -30,6 +30,7 @@ private:
     bool readApplications(QVector<Application> &rows, int sort, QString &error);
     bool readEndpoints(QVector<Endpoint> &rows, const ReadOptions &options, QString &error);
 
+    bool m_hasQuic = false;
     QSqlDatabase m_db;
     QString m_connectionName;
     QString m_path;

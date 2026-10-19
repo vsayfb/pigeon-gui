@@ -42,6 +42,11 @@ def main():
             db.execute("INSERT INTO conversations VALUES(x'0a000002',x'08080808',0,1,1,1,4,4,strftime('%s','now'),strftime('%s','now'),NULL,'')")
             db.execute("INSERT INTO conversations VALUES(x'20010db8000000000000000000000010',x'20010db8000000000000000000000042',0,58,1,1,4,4,strftime('%s','now'),strftime('%s','now'),NULL,'')")
         check([executable, "--check-qml", "--database", str(database)], env)
+        with sqlite3.connect(database) as db:
+            db.execute("ALTER TABLE conversations ADD COLUMN quic INTEGER NOT NULL DEFAULT 0")
+            db.execute("UPDATE conversations SET quic=1 WHERE protocol=17")
+            db.execute("PRAGMA user_version=6")
+        check([executable, "--check-qml", "--database", str(database)], env)
         check([executable, "--check-qml"], env)
 
 

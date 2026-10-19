@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     arguments.setApplicationDescription(QStringLiteral("Read-only Pigeon SQLite viewer"));
     arguments.addHelpOption();
     QCommandLineOption databaseOption({QStringLiteral("d"), QStringLiteral("database")},
-                                      QStringLiteral("Existing schema-v4/v5 SQLite database"),
+                                      QStringLiteral("Existing schema-v4/v5/v6 SQLite database"),
                                       QStringLiteral("path"));
     arguments.addOption(databaseOption);
     QCommandLineOption checkQmlOption(QStringLiteral("check-qml"),

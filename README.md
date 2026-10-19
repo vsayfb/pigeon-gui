@@ -42,3 +42,10 @@ ICMP and ICMPv6 conversations are supported in collector schema v5. The GUI
 continues to read schema v4 too. Protocol filters include both control protocols;
 port cells show a dash because ICMP has no ports. These rows have no attributed
 application. The collector performs migration; the GUI remains read-only.
+
+Schema v6 adds passive QUIC classification metadata on existing UDP aggregates.
+The GUI reads v4/v5/v6, showing `QUIC (UDP)` when the collector's `quic` flag is
+set. The UDP filter still includes it. The label does not change identity,
+counters or graph baselines, and does not imply that all traffic in an aggregate
+is QUIC or HTTP/3. Header evidence is not cryptographic authentication. Older
+files simply show UDP; the GUI does not infer QUIC from ports or perform capture.

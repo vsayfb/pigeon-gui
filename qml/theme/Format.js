@@ -26,7 +26,8 @@ function speed(value, measured) {
     return measured ? size(value) + "/s" : "Waiting for sample";
 }
 
-function protocol(value) {
+function protocol(value, quic) {
+    if (value === 17 && quic) return "QUIC (UDP)";
     return value === 1 ? "ICMP" : value === 58 ? "ICMPv6"
         : value === 6 ? "TCP" : value === 17 ? "UDP" : String(value);
 }

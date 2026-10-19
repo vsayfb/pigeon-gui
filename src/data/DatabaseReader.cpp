@@ -97,10 +97,11 @@ bool DatabaseReader::checkSchema(QString &error)
         error = queryError(version, QStringLiteral("Read schema version"));
         return false;
     }
-    if (version.value(0).toInt() != 4 && version.value(0).toInt() != 5) {
-        error = QStringLiteral("Schema version 4 or 5 required; use the collector to migrate the database");
+    if (version.value(0).toInt() != 4 && version.value(0).toInt() != 5 && version.value(0).toInt() != 6) {
+        error = QStringLiteral("Schema version 4, 5 or 6 required; use the collector to migrate the database");
         return false;
     }
+    m_hasQuic = version.value(0).toInt() == 6;
     version.finish();
 
     const auto validateTable = [this, &error](const QString &table, const QSet<QString> &expected) {
@@ -115,11 +116,14 @@ bool DatabaseReader::checkSchema(QString &error)
         QSet<QString> missing = expected;
         missing.subtract(seen);
         if (!missing.isEmpty()) {
-            error = QStringLiteral("Schema v4 is missing required columns in '") + table + QLatin1Char('\'');
+            error = QStringLiteral("Schema is missing required columns in '") + table + QLatin1Char('\'');
             return false;
         }
         return true;
     };
+
+    if (m_hasQuic && !validateTable(QStringLiteral("conversations"), {QStringLiteral("quic")}))
+        return false;
 
     return validateTable(QStringLiteral("conversations"),
                          {QStringLiteral("us_ip"), QStringLiteral("remote_ip"), QStringLiteral("remote_port"),
@@ -268,9 +272,9 @@ bool DatabaseReader::readConversations(QVector<Conversation> &rows, const ReadOp
 {
     QString sql = QStringLiteral(
         "SELECT us_ip,remote_ip,remote_port,protocol,packets_out,packets_in,bytes_out,bytes_in,"
-        "first_seen,last_seen,coalesce(remote_name,''),application FROM conversations "
+        "first_seen,last_seen,coalesce(remote_name,''),application,%1 FROM conversations "
         "WHERE (?=0 OR protocol=?) AND (?=0 OR length(remote_ip)=?) "
-        "AND (?=0 OR application=?) ");
+        "AND (?=0 OR application=?) ").arg(m_hasQuic ? QStringLiteral("quic") : QStringLiteral("0"));
     if (!top)
         sql += QStringLiteral("AND (?=0 OR last_seen>=?) AND last_seen<=? ");
     if (top) {
@@ -335,6 +339,14 @@ bool DatabaseReader::readConversations(QVector<Conversation> &rows, const ReadOp
         row.lastSeen = q.value(9).toLongLong();
         row.remoteName = q.value(10).toString();
         row.application = q.value(11).toString();
+        bool quicOk = false;
+        const int quic = q.value(12).toInt(&quicOk);
+        if (!quicOk || (quic != 0 && quic != 1) || (quic && row.protocol != 17)) {
+            error = QStringLiteral("Invalid QUIC classification");
+            return false;
+        }
+
+        row.quic = quic == 1;
         const bool invalidControl = (row.protocol == 1 || row.protocol == 58)
             && (row.remotePort != 0 || !row.application.isEmpty()
                 || row.localAddress.size() != (row.protocol == 1 ? 4 : 16));

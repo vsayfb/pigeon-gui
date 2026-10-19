@@ -82,6 +82,7 @@ private slots:
     void stableModelIndexes();
     void boundedRowHistory();
     void icmpVersionFiveAndFilters();
+    void quicMetadataAndStableIdentity();
 };
 
 void DataTests::exactWideIntegerFormatting()
@@ -289,6 +290,39 @@ void DataTests::icmpVersionFiveAndFilters()
     QVERIFY(execute(path, {QStringLiteral("UPDATE conversations SET remote_port=1 WHERE protocol=58")}));
     QVERIFY(!reader.read(path, options, 100, snapshot, error));
     QCOMPARE(snapshot.top.first().remotePort, 0); // Failed reads preserve the last snapshot.
+}
+
+void DataTests::quicMetadataAndStableIdentity()
+{
+    QTemporaryDir directory;
+    const QString path = createFixture(directory.filePath(QStringLiteral("quic.db")));
+    QVERIFY(!path.isEmpty());
+    QVERIFY(execute(path, {QStringLiteral("PRAGMA user_version=6"),
+                          QStringLiteral("ALTER TABLE conversations ADD COLUMN quic INTEGER NOT NULL DEFAULT 0")}));
+    DatabaseReader reader;
+    ReadOptions options;
+    options.protocol = 17;
+    Snapshot before, after;
+    QString error;
+    QVERIFY2(reader.read(path, options, 100, before, error), qPrintable(error));
+    QCOMPARE(before.live.size(), 1);
+    QVERIFY(!before.live.first().quic);
+    QVERIFY(execute(path, {QStringLiteral("UPDATE conversations SET quic=1 WHERE protocol=17")}));
+    QVERIFY2(reader.read(path, options, 100, after, error), qPrintable(error));
+    QVERIFY(after.live.first().quic);
+    QCOMPARE(after.live.first().key(), before.live.first().key());
+    QCOMPARE(after.live.first().bytesIn, before.live.first().bytesIn);
+
+    ConversationsModel model;
+    model.setRows(before.live);
+    QPersistentModelIndex index(model.index(0));
+    model.setRows(after.live);
+    QVERIFY(index.isValid());
+    QVERIFY(model.data(index, ConversationsModel::QuicRole).toBool());
+
+    QVERIFY(execute(path, {QStringLiteral("UPDATE conversations SET quic=2 WHERE protocol=17")}));
+    QVERIFY(!reader.read(path, options, 100, after, error));
+    QVERIFY(after.live.first().quic); // Last good snapshot survives malformed metadata.
 }
 
 void DataTests::failedReadDoesNotModifySnapshot()

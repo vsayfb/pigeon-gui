@@ -2,11 +2,11 @@
 
 This document records the **collector-owned** persistence contract used by the
 GUI reader. Its authority is the collector reference's
-`docs/SCHEMA.md` and `src/store/schema.h`. The reader supports schema v4 and v5.
+`docs/SCHEMA.md` and `src/store/schema.h`. The reader supports schema v4, v5 and v6.
 
 ## File ownership
 
-The collector writes the SQLite database; the GUI is a reader. The GUI must open an **existing** file read-only, verify `PRAGMA user_version` is 4 or 5,
+The collector writes the SQLite database; the GUI is a reader. The GUI must open an **existing** file read-only, verify `PRAGMA user_version` is 4, 5 or 6,
 and reject other versions or missing tables without creating, migrating, or
 modifying any data. The GUI must not require collector source or capture
 privileges. The collector may use SQLite WAL mode, so readers must tolerate
@@ -27,6 +27,7 @@ composite primary key is:
 | `remote_ip` | BLOB | Remote address, same family/byte length as `us_ip` |
 | `remote_port` | INTEGER | Remote port, 0–65535; zero sentinel for ICMP |
 | `protocol` | INTEGER | ICMP = 1, TCP = 6, UDP = 17, ICMPv6 = 58 |
+| `quic` (v6) | INTEGER | 0/1; QUIC observed in this UDP aggregate |
 | `application` | TEXT | Executable basename, max 255 bytes; empty means unresolved |
 | `packets_out`, `packets_in` | INTEGER | Cumulative directional packet counts |
 | `bytes_out`, `bytes_in` | INTEGER | Cumulative directional **protocol payload** bytes |
@@ -105,3 +106,14 @@ additional connections or process ownership. Byte counts exclude the decoded
 ICMP header and can include the quoted packet. The reader validates control-row
 family, empty application and zero port. Local discovery/control exclusions are
 owned by the collector. Existing v4 files remain supported without migration.
+
+## Schema v6 QUIC metadata
+
+The reader requires `quic` in v6 and supplies zero when reading v4/v5 files.
+It validates 0/1 values and rejects a true flag on non-UDP rows. Classification
+is metadata, outside identity and transient rate baselines. Tables/details show
+`QUIC (UDP)` for a true flag; protocol filtering continues to use UDP=17.
+The flag is evidence observed somewhere in an aggregate, not a promise that all
+its lifetime bytes are QUIC. No HTTP/3 classification or decryption is implied.
+The collector owns detection, migration and sticky persistence. Restart the
+viewer after deploying a collector schema upgrade.

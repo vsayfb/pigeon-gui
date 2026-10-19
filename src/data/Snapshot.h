@@ -88,6 +88,7 @@ struct Conversation {
     quint64 bytesIn = 0;
     qint64 firstSeen = 0;
     qint64 lastSeen = 0;
+    bool quic = false; // QUIC observed on this UDP aggregate; never part of key
     bool rateValid = false;
     double rateDown = 0;
     double rateUp = 0;
