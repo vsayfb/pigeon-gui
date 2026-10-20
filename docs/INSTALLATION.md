@@ -12,10 +12,13 @@ curl -fsSL https://piigeon.pages.dev/cli/install.sh | sh
 
 Files go under `~/.local/share/pigeon/versions` and command symlinks into
 `~/.local/bin`. Add that bin directory to PATH if needed. The GUI opens the
-collector's existing database:
+collector's existing database automatically. The application menu entry and window
+are named **Pigeon**, using the supplied pigeon logo (including Wayland desktop
+identity). The terminal command remains `pigeon-gui`; `pigeon` opens the TUI:
+
 
 ```sh
-pigeon-gui --database "$HOME/.local/share/pigeon/pigeon.db"
+pigeon-gui
 ```
 
 ## GitHub Actions configuration
@@ -73,3 +76,14 @@ Qt QML, SQLite and Wayland/XCB packages.
 published. Reinstallation updates only the GUI command; unrelated commands are
 refused. To uninstall, remove its symlink and GUI version directories while
 keeping the collector and database.
+
+The installer shows installation stages and an interactive download progress bar.
+To manage the installed collector, use `pigeon start`, `pigeon stop`,
+`pigeon restart`, `pigeon status`, or `pigeon logs`. Running `pigeon` opens the TUI;
+closing a viewer does not stop capture.
+
+Desktop registration uses `${XDG_DATA_HOME:-$HOME/.local/share}/applications/pigeon-gui.desktop`
+and the icon at `$PIGEON_INSTALL_ROOT/desktop/pigeon.png` (the default root is
+`~/.local/share/pigeon`). The launcher uses absolute paths, so it works without
+adding `~/.local/bin` to your desktop session PATH. Remove this desktop file and
+icon when uninstalling the GUI. Existing unrelated desktop entries are preserved.

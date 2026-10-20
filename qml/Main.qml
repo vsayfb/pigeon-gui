@@ -12,7 +12,7 @@ ApplicationWindow {
     minimumWidth: 620
     minimumHeight: 490
     visible: true
-    title: qsTr("Pigeon GUI")
+    title: qsTr("Pigeon")
     color: Theme.background
     palette.window: Theme.background
     palette.base: Theme.surface

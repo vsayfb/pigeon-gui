@@ -5,6 +5,7 @@
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QGuiApplication>
+#include <QDir>
 #include <QIcon>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
@@ -56,8 +57,13 @@ int main(int argc, char *argv[])
 
     pigeon::AppController controller;
     pigeon::CaptureController captureController;
-    if (arguments.isSet(databaseOption))
+    if (arguments.isSet(databaseOption)) {
         controller.selectDatabase(arguments.value(databaseOption));
+    } else {
+        const QString dataRoot = qEnvironmentVariable("PIGEON_INSTALL_ROOT",
+            QDir::homePath() + QStringLiteral("/.local/share/pigeon"));
+        controller.selectDatabase(QDir(dataRoot).filePath(QStringLiteral("pigeon.db")));
+    }
 
     QQmlApplicationEngine engine;
     auto *appIcons = new pigeon::AppIconProvider;
