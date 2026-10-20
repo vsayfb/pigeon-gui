@@ -88,6 +88,7 @@ qt_add_qml_module(pigeon-gui
         qml/pages/ApplicationsPage.qml
         qml/pages/EndpointsPage.qml
     RESOURCES
+        assets/pigeon.png
         qml/theme/Format.js
 )
 
@@ -112,6 +113,14 @@ install(TARGETS pigeon-gui
     BUNDLE DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# Runtime branding uses the bundled PNG on all platforms. Linux launchers
+# also receive the original image through the standard pixmaps fallback.
+if(UNIX AND NOT APPLE)
+    install(FILES assets/pigeon.png DESTINATION ${CMAKE_INSTALL_DATADIR}/pixmaps)
+    install(FILES packaging/linux/pigeon-gui.desktop
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+endif()
 
 include(CTest)
 if(BUILD_TESTING)

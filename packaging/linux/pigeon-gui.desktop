@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Pigeon
+GenericName=Network Viewer
+Comment=See which applications and endpoints your device communicates with
+Exec=pigeon-gui
+Icon=pigeon
+Terminal=false
+Categories=Network;Monitor;

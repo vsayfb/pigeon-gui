@@ -80,3 +80,8 @@ show `-`; observed names always take precedence. This presentation-only range
 label does not prove that a peer shares the current LAN (private VPN networks
 can qualify). Tooltips and details show the classification, with exact IPs
 retained. No DNS lookup, database migration, or stored name changes are involved.
+
+The supplied Pigeon symbol is bundled as `assets/pigeon.png` for the sidebar
+and runtime application/window icon. Linux installation also places the icon
+in `share/pixmaps` and the launcher in `share/applications`. The artwork is
+copied from the supplied PNG without modification.

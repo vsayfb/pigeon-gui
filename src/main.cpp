@@ -5,6 +5,7 @@
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
 #include <QQmlError>
@@ -22,6 +23,8 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("Pigeon"));
     QGuiApplication::setOrganizationName(QStringLiteral("Pigeon"));
+    QGuiApplication::setDesktopFileName(QStringLiteral("pigeon-gui"));
+    QGuiApplication::setWindowIcon(QIcon(QStringLiteral(":/qt/qml/Pigeon/Gui/assets/pigeon.png")));
 
     QCommandLineParser arguments;
     arguments.setApplicationDescription(QStringLiteral("Read-only Pigeon SQLite viewer"));
