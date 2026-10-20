@@ -23,6 +23,8 @@ jobs:
         run: python3 packaging/test_deploy.py
       - name: Check desktop installer
         run: python3 packaging/test_install.py
+      - name: Check uninstaller
+        run: python3 packaging/test_uninstall.py
       - name: Resolve GUI version
         id: version
         shell: bash

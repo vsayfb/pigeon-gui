@@ -29,7 +29,7 @@ Add these repository secrets, using the same Cloudflare account as the CLI:
 - `CLOUDFLARE_ACCOUNT_ID`: your account ID.
 
 Run **Release and publish Pigeon GUI** manually, or push a `vX.Y.Z` tag matching
-this repository's CMake version, currently `v0.1.0`.
+this repository's CMake version, currently `v0.0.2`.
 
 This repository owns its installer, packaging and release workflow. It builds
 only GUI archives and stages its files under `/gui/`. Before deploying, it
@@ -63,8 +63,8 @@ With CMake, Ninja, a C++17 compiler, Python 3.10+, patchelf, and the Qt 6
 Quick/Controls/SQL/Network development/runtime modules installed:
 
 ```sh
-python3 packaging/release.py build --version 0.1.0 --output dist
-python3 packaging/release.py site --version 0.1.0 --artifacts dist --output dist/upload
+python3 packaging/release.py build --version 0.0.2 --output dist
+python3 packaging/release.py site --version 0.0.2 --artifacts dist --output dist/upload
 PIGEON_INSTALL_ROOT=/tmp/pigeon-gui-check/data PIGEON_BIN_DIR=/tmp/pigeon-gui-check/bin \
   sh packaging/install.sh --from "$PWD/dist/upload"
 ```
@@ -87,3 +87,8 @@ and the icon at `$PIGEON_INSTALL_ROOT/desktop/pigeon.png` (the default root is
 `~/.local/share/pigeon`). The launcher uses absolute paths, so it works without
 adding `~/.local/bin` to your desktop session PATH. Remove this desktop file and
 icon when uninstalling the GUI. Existing unrelated desktop entries are preserved.
+
+Uninstall the GUI with `pigeon-gui --uninstall`. This removes its command,
+desktop entry, logo and GUI bundles, while preserving the collector and database.
+Run `pigeon uninstall` separately to remove CLI/TUI and stop capture.
+Wayland libraries are supplied by the host alongside its graphics drivers.

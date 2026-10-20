@@ -14,7 +14,7 @@ import tarfile
 
 ROOT = Path(__file__).resolve().parents[1]
 # Keep the host's libc/loader and graphics driver interface. Bundle the rest.
-SYSTEM = re.compile(r'^(linux-vdso|ld-linux|ld-musl|libc\.so|libc\.musl|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|libutil\.so|libanl\.so|libGL\.so|libEGL\.so|libGLX\.so|libOpenGL\.so|libGLESv2\.so|libGLdispatch\.so|libvulkan\.so)')
+SYSTEM = re.compile(r'^(linux-vdso|ld-linux|ld-musl|libc\.so|libc\.musl|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|libutil\.so|libanl\.so|libGL\.so|libEGL\.so|libGLX\.so|libOpenGL\.so|libGLESv2\.so|libGLdispatch\.so|libvulkan\.so|libwayland-)')
 
 
 def run(*args, **kwargs):
@@ -125,6 +125,12 @@ def build(args):
     (stage / 'bin').mkdir(parents=True)
     for target in targets:
         shutil.copy2(build_dir / target, stage / 'bin' / target)
+    executable = stage / 'bin' / 'pigeon-gui'
+    executable.rename(stage / 'bin' / 'pigeon-gui.real')
+    shutil.copy2(ROOT / 'packaging/pigeon-gui.sh', executable)
+    executable.chmod(0o755)
+    (stage / 'share').mkdir(exist_ok=True)
+    shutil.copy2(ROOT / 'packaging/uninstall.sh', stage / 'share/uninstall.sh')
     # Include runtime QML imports and plugins, including SQLite and Wayland/XCB.
     qmake = shutil.which('qmake6') or shutil.which('qmake')
     if not qmake:

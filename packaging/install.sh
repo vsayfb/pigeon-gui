@@ -163,6 +163,8 @@ for component in $components; do
     # Unique destination also permits reinstalling the same version safely.
     destination=$(mktemp -d "$root/versions/$version-$component.XXXXXX")
     cp -R "$work/$component/." "$destination/"
+    printf '%s\n' "$bin" > "$destination/INSTALL_BIN"
+    printf '%s\n' "$data" > "$destination/INSTALL_DESKTOP_DATA"
     commands='pigeon pigeon-tui'
     [ "$component" = core ] || commands=pigeon-gui
     for command in $commands; do
@@ -190,6 +192,7 @@ cp "$destination/share/pigeon/pigeon.png" "$icon"
     printf '%s\n' 'Terminal=false' 'Categories=Network;Monitor;' 'StartupNotify=true' 'X-Pigeon-Managed=true'
 } > "$work/pigeon-gui.desktop"
 cp "$work/pigeon-gui.desktop" "$desktop"
+cp "$work/pigeon-gui.desktop" "$root/desktop/pigeon-gui.desktop"
 if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$data/applications" >/dev/null 2>&1 || :
 fi
@@ -213,3 +216,5 @@ else
     printf 'Viewer: "%s/pigeon-gui" --database "%s/pigeon.db"\n' "$bin" "$root"
     printf 'The collector is installed separately using /cli/install.sh.\n'
 fi
+
+printf 'Uninstall GUI: pigeon-gui --uninstall (keeps collector and database).\n'
