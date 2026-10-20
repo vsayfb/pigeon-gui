@@ -66,6 +66,8 @@ int main(int argc, char *argv[])
     }
 
     QQmlApplicationEngine engine;
+    // Qt 6.4 does not include this resource root in its default import paths.
+    engine.addImportPath(QStringLiteral("qrc:/qt/qml"));
     auto *appIcons = new pigeon::AppIconProvider;
     engine.addImageProvider(QStringLiteral("appicons"), appIcons);
     engine.rootContext()->setContextProperty(QStringLiteral("appIcons"),
