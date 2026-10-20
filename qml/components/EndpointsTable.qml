@@ -62,6 +62,7 @@ SurfaceCard {
                 delegate: Rectangle {
                     id: entry
                     required property string ip
+                    readonly property string addressScope: readerController.addressScope(ip)
                     required property string name
                     required property real firstSeen
                     required property real lastSeen
@@ -71,7 +72,8 @@ SurfaceCard {
                     Row {
                         anchors.fill: parent
                         CellText { width: 295; height: parent.height; label: entry.ip; prominent: true; ink: Theme.textPrimary }
-                        CellText { width: 270; height: parent.height; label: entry.name ? entry.name : qsTr("Not observed"); fullText: entry.name }
+                        CellText { width: 270; height: parent.height; label: readerController.endpointName(entry.name, entry.ip)
+                            fullText: entry.name || (entry.addressScope ? entry.addressScope + "\n" + qsTr("Address-range label, not an observed DNS name or proof of the same subnet.") : qsTr("No observed DNS association")) }
                         CellText { width: 165; height: parent.height; label: Format.timestamp(entry.firstSeen) }
                         CellText { width: 165; height: parent.height; label: Format.timestamp(entry.lastSeen) }
                     }

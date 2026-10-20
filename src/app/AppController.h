@@ -105,6 +105,8 @@ public:
     QString selectedIdentity() const { return m_selectedIdentity; }
     QVariantMap selectedDetails() const { return m_selectedDetails; }
 
+    Q_INVOKABLE QString endpointName(const QString &name, const QString &ip) const;
+    Q_INVOKABLE QString addressScope(const QString &ip) const;
     Q_INVOKABLE void selectDatabase(const QString &path);
     Q_INVOKABLE void retryRead();
     Q_INVOKABLE void setSearch(const QString &search);

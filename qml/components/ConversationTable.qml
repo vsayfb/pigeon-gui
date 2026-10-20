@@ -95,6 +95,7 @@ SurfaceCard {
                         required property string identity
                         required property string application
                         required property string remoteIp
+                        readonly property string addressScope: readerController.addressScope(remoteIp)
                         required property string remoteName
                         required property int remotePort
                         required property int protocol
@@ -135,9 +136,10 @@ SurfaceCard {
                             }
                             CellText {
                                 width: table.domainWidth; height: parent.height
-                                label: row.remoteName.length ? row.remoteName : qsTr("Not observed")
+                                label: readerController.endpointName(row.remoteName, row.remoteIp)
                                 fullText: row.remoteName.length
                                     ? row.remoteName + "\n" + qsTr("Observed DNS association, not verified ownership")
+                                    : row.addressScope ? row.addressScope + "\n" + qsTr("Address-range label, not an observed DNS name or proof of the same subnet.")
                                     : qsTr("No observed DNS association")
                             }
                             CellText {

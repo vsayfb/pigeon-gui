@@ -73,3 +73,10 @@ socket, without writing SQLite or starting a privileged process. The collector
 authorizes root and its launching user (`SUDO_UID` when started with sudo).
 Old collectors, copied databases and other platforms remain viewable; capture
 control reports unavailable. Database paths must fit the Unix socket path limit.
+
+Unnamed loopback endpoints display **This device**. Unnamed endpoints in private,
+link-local, locally scoped multicast, and limited broadcast ranges display **Local network**. Public unnamed endpoints
+show `-`; observed names always take precedence. This presentation-only range
+label does not prove that a peer shares the current LAN (private VPN networks
+can qualify). Tooltips and details show the classification, with exact IPs
+retained. No DNS lookup, database migration, or stored name changes are involved.

@@ -55,10 +55,36 @@ bool makeFixture(const QString &path)
 class ControllerTests : public QObject {
     Q_OBJECT
 private slots:
+    void localNetworkRanges();
     void filtersAndApplicationDrillDown();
     void pauseAndSupersededRefreshes();
     void retrySameDatabasePathAfterFailure();
 };
+
+void ControllerTests::localNetworkRanges()
+{
+    AppController controller;
+    QCOMPARE(controller.endpointName("", "127.0.0.1"), "This device");
+    QCOMPARE(controller.endpointName("", "::1"), "This device");
+    QCOMPARE(controller.endpointName("", "::ffff:127.0.0.1"), "This device");
+    QCOMPARE(controller.endpointName("", "192.168.1.1"), "Local network");
+    QCOMPARE(controller.endpointName("", "ff02::fb"), "Local network");
+    QCOMPARE(controller.endpointName("", "8.8.8.8"), "-");
+    QCOMPARE(controller.endpointName("router.test", "192.168.1.1"), "router.test");
+    QCOMPARE(controller.endpointName("localhost", "127.0.0.1"), "localhost");
+    const QStringList local = { "10.0.0.1", "172.16.0.1", "172.31.255.255", "192.168.1.1",
+        "127.0.0.1", "169.254.1.1", "224.0.0.251", "239.255.255.250", "255.255.255.255",
+        "::1", "fc00::1", "fdff::1", "fe80::1", "febf::1", "ff02::fb", "ff05::1", "ff18::1",
+        "::ffff:192.168.1.1" };
+    for (const auto &ip : local)
+        QVERIFY2(!controller.addressScope(ip).isEmpty(), qPrintable(ip));
+    const QStringList other = { "", "invalid", "0.0.0.0", "8.8.8.8", "100.64.0.1", "172.15.255.255",
+        "172.32.0.0", "192.169.0.1", "224.0.1.1", "238.255.255.255", "240.0.0.1",
+        "192.0.2.1", "::", "2001:db8::1", "2001:4860::8888", "fe7f::1", "fec0::1", "ff0e::1",
+        "ff00::1", "::ffff:8.8.8.8" };
+    for (const auto &ip : other)
+        QVERIFY2(controller.addressScope(ip).isEmpty(), qPrintable(ip));
+}
 
 void ControllerTests::filtersAndApplicationDrillDown()
 {

@@ -66,7 +66,8 @@ Drawer {
             }
             Repeater {
                 model: [
-                    [qsTr("Observed name"), parent.details.remoteName || qsTr("None observed")],
+                    [qsTr("Endpoint name"), readerController.endpointName(parent.details.remoteName || "", parent.details.remoteIp || "")],
+                    [qsTr("Address information"), readerController.addressScope(parent.details.remoteIp || "") || "—"],
                     [qsTr("Remote IP"), parent.details.remoteIp || "—"],
                     [qsTr("Local IP"), parent.details.localIp || "—"],
                     [qsTr("Remote port"), !Format.hasPorts(parent.details.protocol) || parent.details.remotePort === undefined ? "—" : String(parent.details.remotePort)],

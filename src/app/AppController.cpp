@@ -2,6 +2,7 @@
 
 #include <QDateTime>
 #include <QFileInfo>
+#include <QHostAddress>
 #include <QUrl>
 
 #include <utility>
@@ -115,6 +116,63 @@ QString AppController::lastPacketAge() const
     if (seconds < 86400)
         return QStringLiteral("%1h ago").arg(seconds / 3600);
     return QStringLiteral("%1d ago").arg(seconds / 86400);
+}
+
+QString AppController::endpointName(const QString &name, const QString &ip) const
+{
+    if (!name.isEmpty())
+        return name;
+    if (addressScope(ip).isEmpty())
+        return QStringLiteral("-");
+
+    const QHostAddress address(ip);
+    bool converted = false;
+    const quint32 v4 = address.toIPv4Address(&converted);
+    return address.isLoopback() || (converted && (v4 >> 24) == 127)
+        ? tr("This device") : tr("Local network");
+}
+
+QString AppController::addressScope(const QString &ip) const
+{
+    const QHostAddress address(ip);
+    if (address.protocol() == QAbstractSocket::IPv4Protocol) {
+        const quint32 value = address.toIPv4Address();
+        const unsigned first = value >> 24;
+        const unsigned second = (value >> 16) & 255;
+        if (first == 10 || (first == 172 && (second & 0xf0) == 16) || (first == 192 && second == 168))
+            return tr("Private address range (may include VPN networks)");
+        if (first == 127)
+            return tr("Loopback address (this device)");
+        if (first == 169 && second == 254)
+            return tr("Link-local address range");
+        if ((value & 0xffffff00U) == 0xe0000000U || first == 239)
+            return tr("Locally scoped multicast address");
+        if (value == 0xffffffffU)
+            return tr("Local broadcast address");
+        return {};
+    }
+    if (address.protocol() != QAbstractSocket::IPv6Protocol)
+        return {};
+
+    const Q_IPV6ADDR bytes = address.toIPv6Address();
+    bool mapped = bytes[10] == 255 && bytes[11] == 255;
+    for (int i = 0; i < 10; ++i)
+        mapped = mapped && bytes[i] == 0;
+    if (mapped) {
+        const quint32 value = (quint32(bytes[12]) << 24) | (quint32(bytes[13]) << 16)
+                            | (quint32(bytes[14]) << 8) | bytes[15];
+        return addressScope(QHostAddress(value).toString());
+    }
+    if (address.isLoopback())
+        return tr("Loopback address (this device)");
+    if ((bytes[0] & 0xfe) == 0xfc)
+        return tr("Private address range (may include VPN networks)");
+    if (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80)
+        return tr("Link-local address range");
+    const unsigned scope = bytes[1] & 15;
+    if (bytes[0] == 0xff && (scope == 1 || scope == 2 || scope == 3 || scope == 4 || scope == 5 || scope == 8))
+        return tr("Locally scoped multicast address");
+    return {};
 }
 
 void AppController::selectDatabase(const QString &requestedPath)
