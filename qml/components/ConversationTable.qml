@@ -152,14 +152,14 @@ SurfaceCard {
                                 width: 115; height: parent.height; rightAligned: true; ink: Theme.download
                                 label: table.live ? (row.ratesValid ? Format.speed(row.rateDown, true) : qsTr("Waiting"))
                                                   : Format.exactSize(row.bytesDownExact)
-                                fullText: table.live ? (row.ratesValid ? label : qsTr("Waiting for a second sample ≥ 1 second later"))
+                                fullText: table.live ? (row.ratesValid ? label + "\n" + qsTr("Payload rate estimated from database updates. Recent packets may carry no payload or may not yet be persisted.") : qsTr("Waiting for a second sample ≥ 1 second later"))
                                                      : row.bytesDownExact + " B"
                             }
                             CellText {
                                 width: 115; height: parent.height; rightAligned: true; ink: Theme.upload
                                 label: table.live ? (row.ratesValid ? Format.speed(row.rateUp, true) : qsTr("Waiting"))
                                                   : Format.exactSize(row.bytesUpExact)
-                                fullText: table.live ? (row.ratesValid ? label : qsTr("Waiting for a second sample ≥ 1 second later"))
+                                fullText: table.live ? (row.ratesValid ? label + "\n" + qsTr("Payload rate estimated from database updates. Recent packets may carry no payload or may not yet be persisted.") : qsTr("Waiting for a second sample ≥ 1 second later"))
                                                      : row.bytesUpExact + " B"
                             }
                             Item {
