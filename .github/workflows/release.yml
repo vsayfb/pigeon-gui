@@ -1,0 +1,101 @@
+name: Release and publish Pigeon GUI
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pigeon-gui-production-release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check deployment preservation
+        run: python3 packaging/test_deploy.py
+      - name: Resolve GUI version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/^project(pigeon-gui VERSION \([0-9.]*\) LANGUAGES CXX).*/\1/p' CMakeLists.txt)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            test "$GITHUB_REF_NAME" = "v$version"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  gui:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GUI build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ python3 patchelf file \
+            qt6-base-dev qt6-declarative-dev qt6-tools-dev-tools qt6-wayland \
+            qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts \
+            qml6-module-qtquick-window qml6-module-qtquick-templates \
+            qml6-module-qtqml-workerscript qml6-module-qtqml-models libqt6sql6-sqlite
+      - name: Build GUI bundle
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          python3 packaging/release.py build \
+            --version "$RELEASE_VERSION" --output dist
+          QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
+            release-build/gui-*/package/bin/pigeon-gui --check-qml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gui-${{ matrix.runner }}
+          path: |
+            dist/*.manifest
+            dist/*.part*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: [version, gui]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloaded
+      - name: Prepare GUI downloads
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+        run: python3 packaging/release.py site --complete --version "$RELEASE_VERSION" --artifacts downloaded --output dist/upload
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Ensure shared Pages project exists
+        id: pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: python3 packaging/ensure_pages.py
+      - name: Preserve CLI downloads and assemble the deployment
+        env:
+          PIGEON_FIRST_DEPLOYMENT: ${{ steps.pages.outputs.first_deployment }}
+        run: python3 packaging/assemble.py --source dist/upload --output dist/site
+      - name: Deploy GUI and preserved CLI files to Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 pages deploy dist/site --project-name=piigeon --branch=main

@@ -85,3 +85,9 @@ The supplied Pigeon symbol is bundled as `assets/pigeon.png` for the sidebar
 and runtime application/window icon. Linux installation also places the icon
 in `share/pixmaps` and the launcher in `share/applications`. The artwork is
 copied from the supplied PNG without modification.
+
+## Installation releases
+
+The independent GUI installer and release workflow are documented in
+[docs/INSTALLATION.md](docs/INSTALLATION.md). Downloads share Pigeon's Cloudflare
+endpoint; this repository publishes only the `/gui/` component.
