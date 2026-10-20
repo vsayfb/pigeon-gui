@@ -26,7 +26,7 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 8
         anchors.verticalCenter: parent.verticalCenter
-        text: cell.application.length ? cell.application : qsTr("Unresolved")
+        text: cell.application.length ? cell.application : qsTr("—")
         textFormat: Text.PlainText
         color: Theme.textPrimary
         font.pixelSize: Theme.textPixels(12)
@@ -36,6 +36,6 @@ Item {
 
     HoverHandler { id: hover }
     ToolTip.visible: hover.hovered
-    ToolTip.text: (application.length ? application : qsTr("Application not attributed by the collector"))
-        + (iconInfo.site ? "\n" + qsTr("Site icon matched from %1; does not identify the application").arg(domain) : "")
+    ToolTip.text: (application.length ? application : qsTr("Process not identified"))
+        + (iconInfo.site ? "\n" + qsTr("Site icon matched from %1; does not identify the process").arg(domain) : "")
 }

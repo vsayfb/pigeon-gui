@@ -31,7 +31,7 @@ Item {
                     spacing: 7
                     Text {
                         Layout.fillWidth: true
-                        text: qsTr("Application ranking · top 200 by cumulative %1").arg(
+                        text: qsTr("Process ranking · top 200 by cumulative %1").arg(
                             readerController.rankingSort === 1 ? qsTr("download") :
                             readerController.rankingSort === 2 ? qsTr("upload") : qsTr("total"))
                         font.pixelSize: Theme.textPixels(14)
@@ -41,7 +41,7 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
-                        text: qsTr("Aggregates are computed over all stored conversations before the display limit. Totals are approximate; the empty application name appears as Unresolved.")
+                        text: qsTr("Aggregates are computed over all stored conversations before the display limit. Totals are approximate; a dash means the process was not identified.")
                         font.pixelSize: Theme.textPixels(12)
                         color: Theme.textSecondary
                     }
@@ -54,7 +54,7 @@ Item {
                 ScopeCombo {
                     choices: [qsTr("Combined bytes"), qsTr("Downloaded"), qsTr("Uploaded")]
                     selectedIndex: readerController.rankingSort
-                    caption: qsTr("Application ranking")
+                    caption: qsTr("Process ranking")
                     onChosen: function(index) { readerController.setRankingSort(index) }
                 }
             }
@@ -67,7 +67,7 @@ Item {
             }
             Text {
                 Layout.fillWidth: true
-                text: qsTr("Select an application to show only its conversations in Top Traffic. Unresolved is an exact empty-name filter.")
+                text: qsTr("Select an process to show only its conversations in Top Traffic. The dash selects conversations whose process was not identified.")
                 color: Theme.textMuted
                 font.pixelSize: Theme.textPixels(11)
                 wrapMode: Text.WordWrap

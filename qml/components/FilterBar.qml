@@ -29,7 +29,7 @@ SurfaceCard {
                 width: Math.min(300, Math.max(150, filters.width - 18))
                 height: 38
                 placeholderText: bar.page === 4 ? qsTr("Search name or IP")
-                                  : qsTr("Search app, domain or IP")
+                                  : qsTr("Search process, domain or IP")
                 selectByMouse: true
                 color: Theme.textPrimary
                 placeholderTextColor: Theme.textMuted
@@ -118,21 +118,21 @@ SurfaceCard {
             Layout.fillWidth: true
             visible: readerController.applicationSelected && (bar.page === 1 || bar.page === 2)
             Text {
-                text: qsTr("Exact application:")
+                text: qsTr("Exact process:")
                 color: Theme.textSecondary
                 font.pixelSize: Theme.textPixels(12)
             }
             Text {
                 Layout.fillWidth: true
-                text: readerController.selectedApplication.length ? readerController.selectedApplication : qsTr("Unresolved (empty name)")
+                text: readerController.selectedApplication.length ? readerController.selectedApplication : qsTr("— (process not identified)")
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
                 color: Theme.accent
                 font.pixelSize: Theme.textPixels(12)
             }
             ActionButton {
-                text: qsTr("Remove application")
-                Accessible.name: qsTr("Show all applications in conversation lists")
+                text: qsTr("Remove process")
+                Accessible.name: qsTr("Show all processes in conversation lists")
                 onClicked: readerController.clearApplication()
             }
         }

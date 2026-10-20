@@ -47,7 +47,7 @@ SurfaceCard {
                     radius: 12
                     Row {
                         anchors.fill: parent
-                        CellText { width: 150; height: parent.height; label: qsTr("APPLICATION"); ink: Theme.textMuted }
+                        CellText { width: 150; height: parent.height; label: qsTr("PROCESS"); ink: Theme.textMuted }
                         CellText { width: table.domainWidth; height: parent.height; label: qsTr("DOMAIN"); ink: Theme.textMuted }
                         CellText { width: table.ipWidth; height: parent.height; label: qsTr("IP"); ink: Theme.textMuted }
                         CellText { width: 55; height: parent.height; label: qsTr("PORT"); ink: Theme.textMuted }
@@ -68,7 +68,7 @@ SurfaceCard {
                     model: table.sourceModel
                     activeFocusOnTab: true
                 Accessible.name: qsTr("Conversations list")
-                Accessible.description: qsTr("Columns: application, domain, IP, port, protocol, download, upload, direction, recent rate, last seen. Use Up and Down to select a row, Left and Right to scroll, and Enter to open details.")
+                Accessible.description: qsTr("Columns: process, domain, IP, port, protocol, download, upload, direction, recent rate, last seen. Use Up and Down to select a row, Left and Right to scroll, and Enter to open details.")
                 Keys.onLeftPressed: horizontal.contentX = Math.max(0, horizontal.contentX - 120)
                 Keys.onRightPressed: horizontal.contentX = Math.min(
                     horizontal.contentWidth - horizontal.width, horizontal.contentX + 120)

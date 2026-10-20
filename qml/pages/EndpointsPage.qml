@@ -37,7 +37,7 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
-                        text: qsTr("Each remote IP appears once across applications, ports and local addresses. First seen means earliest recorded observation, not when an internet endpoint was created.")
+                        text: qsTr("Each remote IP appears once across processes, ports and local addresses. First seen means earliest recorded observation, not when an internet endpoint was created.")
                         font.pixelSize: Theme.textPixels(12)
                         color: Theme.textSecondary
                     }

@@ -28,7 +28,7 @@ ApplicationWindow {
     readonly property bool trafficPage: currentPage === 1 || currentPage === 2
     readonly property bool compact: width < 940
     readonly property var titles: [qsTr("Overview"), qsTr("Live Traffic"),
-                                   qsTr("Top Traffic"), qsTr("Applications"), qsTr("New Endpoints")]
+                                   qsTr("Top Traffic"), qsTr("Processes"), qsTr("New Endpoints")]
     readonly property var symbols: ["▦", "∿", "▥", "▤", "◎"]
 
     Binding {

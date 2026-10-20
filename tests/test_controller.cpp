@@ -124,7 +124,7 @@ void ControllerTests::filtersAndApplicationDrillDown()
     const QString id = top->data(top->index(0, 0), ConversationsModel::IdentityRole).toString();
     controller.selectConversation(id, false);
     QCOMPARE(controller.selectedDetails().value(QStringLiteral("application")).toString(),
-             QStringLiteral("Unresolved"));
+             QStringLiteral("Process not identified"));
     QCOMPARE(controller.selectedDetails().value(QStringLiteral("remoteIp")).toString(),
              QStringLiteral("1.1.1.1"));
     QCOMPARE(controller.selectedIdentity(), id);

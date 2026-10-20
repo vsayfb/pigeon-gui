@@ -34,7 +34,7 @@ SurfaceCard {
                 height: Math.max(34, Theme.textPixels(28))
                 Row {
                     anchors.fill: parent
-                    CellText { width: 225; height: parent.height; label: qsTr("APPLICATION"); ink: Theme.textMuted }
+                    CellText { width: 225; height: parent.height; label: qsTr("PROCESS"); ink: Theme.textMuted }
                     CellText { width: 136; height: parent.height; label: qsTr("DOWNLOADED"); ink: Theme.textMuted; rightAligned: true }
                     CellText { width: 136; height: parent.height; label: qsTr("UPLOADED"); ink: Theme.textMuted; rightAligned: true }
                     CellText { width: 105; height: parent.height; label: qsTr("CONVERSATIONS"); ink: Theme.textMuted; rightAligned: true }
@@ -52,7 +52,7 @@ SurfaceCard {
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                 activeFocusOnTab: true
-                Accessible.name: qsTr("Applications list")
+                Accessible.name: qsTr("Processes list")
                 Accessible.description: qsTr("Use Up and Down to select a row, Left and Right to scroll columns, and Enter to open it")
                 Keys.onLeftPressed: horizontal.contentX = Math.max(0, horizontal.contentX - 120)
                 Keys.onRightPressed: horizontal.contentX = Math.min(
@@ -112,7 +112,7 @@ SurfaceCard {
     EmptyState {
         anchors.fill: parent
         visible: list.count === 0
-        heading: qsTr("No applications recorded")
-        explanation: qsTr("Application names come from collector attribution. Unresolved entries are expected.")
+        heading: qsTr("No processes recorded")
+        explanation: qsTr("Process names come from collector attribution. A dash means the process was not identified.")
     }
 }

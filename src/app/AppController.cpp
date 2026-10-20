@@ -415,7 +415,7 @@ void AppController::updateSelection()
     } else {
         m_selectedDetails = {
             {QStringLiteral("inCurrentView"), true},
-            {QStringLiteral("application"), row.application.isEmpty() ? QStringLiteral("Unresolved") : row.application},
+            {QStringLiteral("application"), row.application.isEmpty() ? QStringLiteral("Process not identified") : row.application},
             {QStringLiteral("localIp"), row.localIp},
             {QStringLiteral("remoteIp"), row.remoteIp},
             {QStringLiteral("remoteName"), row.remoteName},
