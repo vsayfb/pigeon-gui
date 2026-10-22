@@ -1,5 +1,6 @@
 #include "app/AppController.h"
 #include "app/CaptureController.h"
+#include "app/SettingsController.h"
 #include "app/AppIconProvider.h"
 
 #include <QCommandLineOption>
@@ -37,6 +38,7 @@ int main(int argc, char *argv[])
     QCommandLineOption checkQmlOption(QStringLiteral("check-qml"),
                                       QStringLiteral("Check QML startup across all views and exit"));
     arguments.addOption(checkQmlOption);
+    arguments.addOption({QStringLiteral("preview-settings"), QStringLiteral("Open Settings in a preview")});
     QCommandLineOption previewOption(QStringLiteral("render-preview"),
                                      QStringLiteral("Render a window preview to a PNG and exit"),
                                      QStringLiteral("path"));
@@ -55,15 +57,17 @@ int main(int argc, char *argv[])
     arguments.addOption({QStringLiteral("preview-interfaces"), QStringLiteral("Open capture source dialog in a preview")});
     arguments.process(app);
 
+    pigeon::SettingsController settingsController;
     pigeon::AppController controller;
     pigeon::CaptureController captureController;
     if (arguments.isSet(databaseOption)) {
         controller.selectDatabase(arguments.value(databaseOption));
     } else {
-        const QString dataRoot = qEnvironmentVariable("PIGEON_INSTALL_ROOT",
-            QDir::homePath() + QStringLiteral("/.local/share/pigeon"));
-        controller.selectDatabase(QDir(dataRoot).filePath(QStringLiteral("pigeon.db")));
+        controller.selectDatabase(settingsController.databasePath());
     }
+
+    QObject::connect(&settingsController, &pigeon::SettingsController::databaseChanged,
+                     &controller, &pigeon::AppController::selectDatabase);
 
     QQmlApplicationEngine engine;
     // Qt 6.4 does not include this resource root in its default import paths.
@@ -79,6 +83,7 @@ int main(int argc, char *argv[])
                      });
     engine.rootContext()->setContextProperty(QStringLiteral("readerController"), &controller);
     engine.rootContext()->setContextProperty(QStringLiteral("captureController"), &captureController);
+    engine.rootContext()->setContextProperty(QStringLiteral("settingsController"), &settingsController);
     engine.load(QUrl(QStringLiteral("qrc:/qt/qml/Pigeon/Gui/Main.qml")));
 
     if (engine.rootObjects().isEmpty())
@@ -95,6 +100,13 @@ int main(int argc, char *argv[])
         if (arguments.isSet(QStringLiteral("preview-interfaces"))) {
             QTimer::singleShot(200, window, [window] {
                 auto *dialog = window->findChild<QObject *>(QStringLiteral("captureInterfaceDialog"));
+                if (dialog)
+                    QMetaObject::invokeMethod(dialog, "open");
+            });
+        }
+        if (arguments.isSet(QStringLiteral("preview-settings"))) {
+            QTimer::singleShot(200, window, [window] {
+                auto *dialog = window->findChild<QObject *>(QStringLiteral("settingsDialog"));
                 if (dialog)
                     QMetaObject::invokeMethod(dialog, "open");
             });
@@ -127,7 +139,15 @@ int main(int argc, char *argv[])
             if (dialog)
                 QMetaObject::invokeMethod(dialog, "open");
         });
-        QTimer::singleShot(1750, &app, &QCoreApplication::quit);
+        QTimer::singleShot(1650, window, [window] {
+            auto *capture = window->findChild<QObject *>(QStringLiteral("captureInterfaceDialog"));
+            if (capture)
+                QMetaObject::invokeMethod(capture, "close");
+            auto *settings = window->findChild<QObject *>(QStringLiteral("settingsDialog"));
+            if (settings)
+                QMetaObject::invokeMethod(settings, "open");
+        });
+        QTimer::singleShot(1950, &app, &QCoreApplication::quit);
         const int result = app.exec();
         for (const QQmlError &warning : std::as_const(qmlWarnings))
             qCritical().noquote() << warning.toString();

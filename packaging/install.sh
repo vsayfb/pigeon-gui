@@ -187,7 +187,7 @@ cp "$destination/share/pigeon/pigeon.png" "$icon"
     printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=Pigeon' \
         'GenericName=Network Viewer' \
         'Comment=See which processes and endpoints your device communicates with'
-    printf 'Exec="%s" --database "%s"\n' "$(desktop_argument "$bin/pigeon-gui")" "$(desktop_argument "$root/pigeon.db")"
+    printf 'Exec="%s"\n' "$(desktop_argument "$bin/pigeon-gui")"
     printf 'Icon=%s\n' "$(desktop_string "$icon")"
     printf '%s\n' 'Terminal=false' 'Categories=Network;Monitor;' 'StartupNotify=true' 'X-Pigeon-Managed=true'
 } > "$work/pigeon-gui.desktop"
@@ -213,7 +213,7 @@ if [ "$component" = core ]; then
     printf 'Database: %s/pigeon.db\n' "$root"
 else
     printf 'Open Pigeon from your application menu, or run pigeon-gui.\n'
-    printf 'Viewer: "%s/pigeon-gui" --database "%s/pigeon.db"\n' "$bin" "$root"
+    printf 'Viewer: "%s/pigeon-gui"\n' "$bin"
     printf 'The collector is installed separately using /cli/install.sh.\n'
 fi
 

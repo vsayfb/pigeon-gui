@@ -29,7 +29,7 @@ Add these repository secrets, using the same Cloudflare account as the CLI:
 - `CLOUDFLARE_ACCOUNT_ID`: your account ID.
 
 Run **Release and publish Pigeon GUI** manually, or push a `vX.Y.Z` tag matching
-this repository's CMake version, currently `v0.0.2`.
+this repository's CMake version, currently `v0.0.3`.
 
 This repository owns its installer, packaging and release workflow. It builds
 only GUI archives and stages its files under `/gui/`. Before deploying, it
@@ -63,8 +63,8 @@ With CMake, Ninja, a C++17 compiler, Python 3.10+, patchelf, and the Qt 6
 Quick/Controls/SQL/Network development/runtime modules installed:
 
 ```sh
-python3 packaging/release.py build --version 0.0.2 --output dist
-python3 packaging/release.py site --version 0.0.2 --artifacts dist --output dist/upload
+python3 packaging/release.py build --version 0.0.3 --output dist
+python3 packaging/release.py site --version 0.0.3 --artifacts dist --output dist/upload
 PIGEON_INSTALL_ROOT=/tmp/pigeon-gui-check/data PIGEON_BIN_DIR=/tmp/pigeon-gui-check/bin \
   sh packaging/install.sh --from "$PWD/dist/upload"
 ```
@@ -92,3 +92,12 @@ Uninstall the GUI with `pigeon-gui --uninstall`. This removes its command,
 desktop entry, logo and GUI bundles, while preserving the collector and database.
 Run `pigeon uninstall` separately to remove CLI/TUI and stop capture.
 Wayland libraries are supplied by the host alongside its graphics drivers.
+
+The GUI Settings dialog controls collector boot startup and database storage.
+The default database file is `~/.local/share/pigeon/pigeon.db`. Saving a new
+location preserves history through SQLite backup and keeps the original file.
+Active capture restarts at the new location; boot startup stays on or off as
+configured. Desktop authorization uses PolicyKit (`pkexec`); if it is unavailable,
+use the equivalent CLI commands in a terminal. These settings require an updated
+Pigeon CLI with `autostart` and `database` support. Opening an existing database
+in the viewer remains separate from changing collector storage.

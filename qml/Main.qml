@@ -95,6 +95,147 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: settingsDialog
+        objectName: "settingsDialog"
+        title: qsTr("Settings")
+        anchors.centerIn: parent
+        width: Math.min(root.width - 32, 620)
+        height: Math.min(root.height - 32, 490)
+        modal: true
+        padding: 20
+        background: Rectangle { color: Theme.surface; radius: 12; border.color: Theme.border }
+        header: Label {
+            text: qsTr("Settings")
+            padding: 20
+            color: Theme.textPrimary
+            font.pixelSize: Theme.textPixels(20)
+            font.bold: true
+        }
+        footer: Item {
+            implicitHeight: 64
+            ActionButton {
+                anchors.right: parent.right
+                anchors.rightMargin: 20
+                anchors.verticalCenter: parent.verticalCenter
+                text: qsTr("Close")
+                onClicked: settingsDialog.close()
+            }
+        }
+        onOpened: {
+            databaseSetting.text = settingsController.databasePath
+            settingsController.refresh()
+        }
+        Connections {
+            target: settingsController
+            function onDatabaseChanged(path) { databaseSetting.text = path }
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 14
+            RowLayout {
+                Layout.fillWidth: true
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Label { text: qsTr("Start at boot"); font.bold: true; color: Theme.textPrimary }
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("Keep Pigeon watching after reboots.")
+                        wrapMode: Text.Wrap
+                        color: Theme.textSecondary
+                    }
+                }
+                Switch {
+                    id: bootSwitch
+                    objectName: "autostartSwitch"
+                    checked: settingsController.autostart
+                    enabled: settingsController.bootSupported && !settingsController.busy
+                    implicitWidth: 88
+                    implicitHeight: 32
+                    text: checked ? qsTr("On") : qsTr("Off")
+                    indicator: Rectangle {
+                        implicitWidth: 44
+                        implicitHeight: 24
+                        y: (bootSwitch.height - height) / 2
+                        radius: 12
+                        color: bootSwitch.checked ? Theme.accent : Theme.border
+                        opacity: bootSwitch.enabled ? 1 : 0.5
+                        Rectangle {
+                            width: 18
+                            height: 18
+                            radius: 9
+                            y: 3
+                            x: bootSwitch.checked ? parent.width - width - 3 : 3
+                            color: "white"
+                            Behavior on x { NumberAnimation { duration: 120 } }
+                        }
+                    }
+                    contentItem: Text {
+                        text: bootSwitch.text
+                        leftPadding: 52
+                        verticalAlignment: Text.AlignVCenter
+                        color: Theme.textPrimary
+                        opacity: bootSwitch.enabled ? 1 : 0.5
+                        font.pixelSize: Theme.textPixels(13)
+                    }
+                    Accessible.name: qsTr("Start Pigeon automatically at boot")
+                    onClicked: {
+                        const requested = checked
+                        checked = settingsController.autostart
+                        settingsController.setAutostart(requested)
+                    }
+                    Binding { target: bootSwitch; property: "checked"; value: settingsController.autostart }
+                }
+            }
+            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+            Label { text: qsTr("Database location"); font.bold: true; color: Theme.textPrimary }
+            TextField {
+                id: databaseSetting
+                objectName: "databaseLocationSetting"
+                Layout.fillWidth: true
+                enabled: !settingsController.busy
+                placeholderText: settingsController.defaultDatabasePath
+                selectByMouse: true
+                Accessible.name: qsTr("Collector database file path")
+            }
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Default: ") + settingsController.defaultDatabasePath
+                wrapMode: Text.WrapAnywhere
+                color: Theme.textMuted
+                font.pixelSize: Theme.textPixels(11)
+            }
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Saving preserves existing history and restarts active capture. The original file is kept.")
+                wrapMode: Text.Wrap
+                color: Theme.textSecondary
+                font.pixelSize: Theme.textPixels(11)
+            }
+            RowLayout {
+                ActionButton {
+                    text: qsTr("Use default")
+                    enabled: !settingsController.busy
+                    onClicked: databaseSetting.text = settingsController.defaultDatabasePath
+                }
+                ActionButton {
+                    text: qsTr("Save location")
+                    enabled: settingsController.available && !settingsController.busy
+                        && databaseSetting.text !== settingsController.databasePath
+                    onClicked: settingsController.setDatabasePath(databaseSetting.text)
+                }
+                BusyIndicator { running: settingsController.busy; implicitWidth: 26; implicitHeight: 26 }
+            }
+            Label {
+                Layout.fillWidth: true
+                text: settingsController.message
+                wrapMode: Text.Wrap
+                color: Theme.textSecondary
+            }
+            Item { Layout.fillHeight: true }
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -211,6 +352,11 @@ ApplicationWindow {
                             font.weight: Font.DemiBold
                             color: Theme.textPrimary
                         }
+                    }
+                    ActionButton {
+                        text: qsTr("Settings")
+                        Accessible.name: qsTr("Open Pigeon settings")
+                        onClicked: settingsDialog.open()
                     }
                     ActionButton {
                         text: qsTr("Interfaces")

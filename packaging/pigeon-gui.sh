@@ -11,9 +11,4 @@ case "${1:-}" in
         printf '\n  --uninstall  Remove GUI, keeping the collector and traffic history\n'
         exit 0 ;;
 esac
-# Version bundles live alongside the collector's shared database.
-if [ "$#" = 0 ]; then
-    root=$(dirname "$(dirname "$bundle")")
-    set -- --database "${PIGEON_DATABASE:-$root/pigeon.db}"
-fi
 exec "$bundle/bin/pigeon-gui.real" "$@"

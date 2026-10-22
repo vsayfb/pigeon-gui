@@ -15,7 +15,7 @@ with tempfile.TemporaryDirectory(prefix='pigeon-gui-install-') as tmp:
     for _ in range(2):
         subprocess.run(['sh','packaging/install.sh','--from',str(release)],env=env,check=True,stdout=subprocess.DEVNULL)
     desktop=t/'desktop data/applications/pigeon-gui.desktop'
-    text=desktop.read_text(); assert 'Name=Pigeon\n' in text and f'Exec="{t}/bin with spaces/pigeon-gui" --database "{t}/data with spaces/pigeon.db"' in text
+    text=desktop.read_text(); assert 'Name=Pigeon\n' in text and f'Exec="{t}/bin with spaces/pigeon-gui"' in text
     assert (t/'data with spaces/desktop/pigeon.png').read_bytes()==b'icon fixture'
     original = text
     desktop.write_text('[Desktop Entry]\nName=Another app\n')

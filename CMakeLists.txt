@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(pigeon-gui VERSION 0.0.2 LANGUAGES CXX)
+project(pigeon-gui VERSION 0.0.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,6 +13,8 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS Quick QuickControls2 Sql Network)
 
 qt_add_executable(pigeon-gui
     src/main.cpp
+    src/app/SettingsController.h
+    src/app/SettingsController.cpp
     src/app/CaptureController.h
     src/app/CaptureController.cpp
     src/app/AppIconProvider.h
@@ -186,4 +188,15 @@ if(BUILD_TESTING)
     target_include_directories(pigeon-capture-tests PRIVATE src)
     target_link_libraries(pigeon-capture-tests PRIVATE Qt6::Core Qt6::Network Qt6::Test)
     add_test(NAME pigeon-capture COMMAND pigeon-capture-tests)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(pigeon-settings-tests
+        tests/test_settings.cpp
+        src/app/SettingsController.h
+        src/app/SettingsController.cpp
+    )
+    target_include_directories(pigeon-settings-tests PRIVATE src)
+    target_link_libraries(pigeon-settings-tests PRIVATE Qt6::Core Qt6::Test)
+    add_test(NAME pigeon-settings COMMAND pigeon-settings-tests)
 endif()
