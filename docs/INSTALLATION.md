@@ -97,7 +97,7 @@ The GUI Settings dialog controls collector boot startup and database storage.
 The default database file is `~/.local/share/pigeon/pigeon.db`. Saving a new
 location preserves history through SQLite backup and keeps the original file.
 Active capture restarts at the new location; boot startup stays on or off as
-configured. Desktop authorization uses PolicyKit (`pkexec`); if it is unavailable,
-use the equivalent CLI commands in a terminal. These settings require an updated
+configured. Desktop authorization uses PolicyKit (`pkexec`), with a terminal sudo prompt
+as a fallback when PolicyKit is unavailable. These settings require an updated
 Pigeon CLI with `autostart` and `database` support. Opening an existing database
 in the viewer remains separate from changing collector storage.

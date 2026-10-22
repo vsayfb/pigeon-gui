@@ -2,6 +2,9 @@
 
 #include <QObject>
 #include <QProcess>
+#include <QTemporaryDir>
+#include <QTimer>
+#include <memory>
 
 namespace pigeon {
 
@@ -22,7 +25,7 @@ public:
     bool autostart() const { return m_autostart; }
     bool bootSupported() const { return m_bootSupported; }
     bool available() const { return m_available; }
-    bool busy() const { return m_process.state() != QProcess::NotRunning; }
+    bool busy() const { return m_waitingTerminal || m_process.state() != QProcess::NotRunning; }
     QString message() const { return m_message; }
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void setAutostart(bool enabled);
@@ -36,7 +39,13 @@ private:
     void run(const QStringList &arguments, const QString &operation);
     void finished(int code, QProcess::ExitStatus status);
     void readDatabase();
+    void complete(int code, QProcess::ExitStatus status, const QString &output, const QString &error);
+    void checkTerminal();
     QProcess m_process;
+    QTimer m_terminalPoll;
+    std::unique_ptr<QTemporaryDir> m_authFiles;
+    bool m_waitingTerminal = false;
+    bool m_terminalMode = false;
     QString m_cli;
     QString m_root;
     QString m_database;

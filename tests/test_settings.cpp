@@ -18,7 +18,8 @@ private slots:
         QFile cli(bin + "/pigeon");
         QVERIFY(cli.open(QIODevice::WriteOnly));
         cli.write(R"SH(#!/bin/sh
-[ "$PIGEON_GUI_AUTH" = 1 ] || exit 3
+[ "$PIGEON_GUI_AUTH" = 1 ] || [ "$PIGEON_GUI_AUTH" = 0 ] || exit 3
+printf '%s\n' "$PIGEON_GUI_AUTH" > "$PIGEON_INSTALL_ROOT/auth-mode"
 case "$1" in
   autostart)
     case "$2" in
@@ -37,6 +38,11 @@ esac
         QVERIFY(state.open(QIODevice::WriteOnly));
         state.write("on\n");
         state.close();
+        QFile policyKit(bin + "/pkexec");
+        QVERIFY(policyKit.open(QIODevice::WriteOnly));
+        policyKit.write("#!/bin/sh\nexit 0\n");
+        policyKit.close();
+        QVERIFY(policyKit.setPermissions(QFile::ReadOwner | QFile::ExeOwner));
         const QByteArray oldPath = qgetenv("PATH");
         qputenv("PATH", bin.toUtf8() + ':' + oldPath);
         qputenv("PIGEON_INSTALL_ROOT", root.toUtf8());
@@ -64,6 +70,22 @@ esac
         QTRY_VERIFY(!settings.busy());
         QCOMPARE(settings.databasePath(), path);
         QCOMPARE(changed.count(), 1);
+        // A terminal can return immediately while the privileged command is pending.
+        QVERIFY(policyKit.remove());
+        QVERIFY(cancel.remove());
+        QFile terminal(bin + "/x-terminal-emulator");
+        QVERIFY(terminal.open(QIODevice::WriteOnly));
+        terminal.write("#!/bin/sh\nshift\n\"$@\" &\nexit 0\n");
+        terminal.close();
+        QVERIFY(terminal.setPermissions(QFile::ReadOwner | QFile::ExeOwner));
+        qputenv("PATH", bin.toUtf8());
+        settings.setAutostart(true);
+        QTRY_VERIFY(!settings.busy());
+        QVERIFY(settings.autostart());
+        QFile mode(root + "/auth-mode");
+        QVERIFY(mode.open(QIODevice::ReadOnly));
+        QCOMPARE(mode.readAll().trimmed(), QByteArray("0"));
+        QVERIFY(settings.available());
         qputenv("PATH", oldPath);
         qunsetenv("PIGEON_INSTALL_ROOT");
     }
