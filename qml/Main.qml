@@ -96,12 +96,141 @@ ApplicationWindow {
     }
 
     Dialog {
+        id: historyConfirm
+        objectName: "deleteHistoryDialog"
+        property string conversation: ""
+        property bool clearAll: false
+        property string identity: ""
+        property string database: ""
+        title: clearAll ? qsTr("Clear all history?") : qsTr("Delete conversation?")
+        anchors.centerIn: parent
+        width: Math.min(root.width - 32, 500)
+        modal: true
+        padding: 24
+        closePolicy: Popup.CloseOnEscape
+        background: Rectangle {
+            color: Theme.surface
+            radius: 16
+            border.color: Theme.border
+        }
+        header: Label {
+            text: historyConfirm.title
+            leftPadding: 24
+            rightPadding: 24
+            topPadding: 24
+            bottomPadding: 0
+            color: Theme.textPrimary
+            font.pixelSize: Theme.textPixels(22)
+            font.bold: true
+        }
+        footer: Item {
+            implicitHeight: 76
+            Row {
+                anchors.right: parent.right
+                anchors.rightMargin: 24
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 10
+                ActionButton {
+                    text: qsTr("Cancel")
+                    focus: true
+                    onClicked: historyConfirm.reject()
+                }
+                ActionButton {
+                    text: historyConfirm.clearAll ? qsTr("Clear history") : qsTr("Delete conversation")
+                    destructive: true
+                    enabled: !settingsController.busy
+                    onClicked: historyConfirm.accept()
+                }
+            }
+        }
+        onAccepted: {
+            if (clearAll)
+                settingsController.clearHistory(database)
+            else
+                settingsController.deleteConversation(identity, database)
+        }
+        contentItem: ColumnLayout {
+            spacing: 18
+            Label {
+                Layout.fillWidth: true
+                text: historyConfirm.clearAll
+                    ? qsTr("All conversations and saved DNS associations will be permanently deleted.")
+                    : qsTr("This recorded conversation will be permanently deleted.")
+                wrapMode: Text.Wrap
+                color: Theme.textSecondary
+                font.pixelSize: Theme.textPixels(13)
+            }
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: warningText.implicitHeight + 24
+                radius: 8
+                color: Theme.dark ? "#3B242C" : "#FFF0F2"
+                Label {
+                    id: warningText
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    text: qsTr("This cannot be undone. New traffic will still be recorded.")
+                    wrapMode: Text.Wrap
+                    color: Theme.danger
+                    font.pixelSize: Theme.textPixels(12)
+                    font.weight: Font.Medium
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: !historyConfirm.clearAll
+                text: historyConfirm.conversation
+                textFormat: Text.PlainText
+                wrapMode: Text.WrapAnywhere
+                color: Theme.textPrimary
+                font.pixelSize: Theme.textPixels(13)
+                font.bold: true
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 5
+                Label {
+                    text: qsTr("DATABASE")
+                    color: Theme.textMuted
+                    font.pixelSize: Theme.textPixels(10)
+                    font.weight: Font.Medium
+                }
+                Label {
+                    Layout.fillWidth: true
+                    text: historyConfirm.database
+                    textFormat: Text.PlainText
+                    wrapMode: Text.WrapAnywhere
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.textPixels(11)
+                }
+            }
+        }
+    }
+    Dialog {
+        id: historyResultDialog
+        property string message: ""
+        title: qsTr("Traffic history")
+        anchors.centerIn: parent
+        width: Math.min(root.width - 32, 500)
+        modal: true
+        standardButtons: Dialog.Close
+        Label { width: parent.width; wrapMode: Text.Wrap; text: historyResultDialog.message; color: Theme.textPrimary }
+    }
+    Connections {
+        target: settingsController
+        function onHistoryResult(success, message) {
+            historyResultDialog.message = message
+            historyResultDialog.open()
+        }
+    }
+
+    Dialog {
         id: settingsDialog
         objectName: "settingsDialog"
         title: qsTr("Settings")
         anchors.centerIn: parent
         width: Math.min(root.width - 32, 620)
-        height: Math.min(root.height - 32, 490)
+        height: Math.min(root.height - 32, 570)
         modal: true
         padding: 20
         background: Rectangle { color: Theme.surface; radius: 12; border.color: Theme.border }
@@ -226,6 +355,17 @@ ApplicationWindow {
                 }
                 BusyIndicator { running: settingsController.busy; implicitWidth: 26; implicitHeight: 26 }
             }
+            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+            ActionButton {
+                text: qsTr("Clear all history…")
+                enabled: !settingsController.busy && readerController.databasePath.length > 0
+                onClicked: {
+                    historyConfirm.clearAll = true
+                    historyConfirm.identity = ""
+                    historyConfirm.database = readerController.databasePath
+                    historyConfirm.open()
+                }
+            }
             Label {
                 Layout.fillWidth: true
                 text: settingsController.message
@@ -305,7 +445,7 @@ ApplicationWindow {
                 Item { Layout.preferredHeight: 15 }
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("SQLite · read-only")
+                    text: qsTr("Traffic history")
                     font.pixelSize: Theme.textPixels(11)
                     color: Theme.textSecondary
                 }
@@ -379,7 +519,7 @@ ApplicationWindow {
                             anchors.centerIn: parent
                             text: readerController.error.length > 0 ? qsTr("Read failed")
                                 : readerController.paused ? qsTr("Paused")
-                                : readerController.hasSnapshot ? qsTr("Read-only") : qsTr("No data")
+                                : readerController.hasSnapshot ? qsTr("Viewing") : qsTr("No data")
                             color: readerController.error.length > 0 ? Theme.danger : Theme.accent
                             font.pixelSize: Theme.textPixels(12)
                             font.weight: Font.Medium
@@ -568,6 +708,15 @@ ApplicationWindow {
     }
 
     ConversationDetails {
+        onDeleteRequested: function(identity) {
+            historyConfirm.clearAll = false
+            historyConfirm.conversation = (readerController.selectedDetails.application || "")
+                + " · " + (readerController.selectedDetails.remoteIp || "")
+                + ":" + (readerController.selectedDetails.remotePort || 0)
+            historyConfirm.identity = identity
+            historyConfirm.database = readerController.databasePath
+            historyConfirm.open()
+        }
         id: detailsDrawer
     }
 }

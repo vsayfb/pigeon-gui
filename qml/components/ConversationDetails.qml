@@ -6,6 +6,7 @@ import "../theme/Format.js" as Format
 
 Drawer {
     id: inspector
+    signal deleteRequested(string identity)
     edge: Qt.RightEdge
     modal: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -38,6 +39,15 @@ Drawer {
                     text: qsTr("Close")
                     Accessible.name: qsTr("Close conversation details")
                     onClicked: inspector.close()
+                }
+            }
+            ActionButton {
+                text: qsTr("Delete conversation…")
+                destructive: true
+                enabled: !settingsController.busy && readerController.selectedIdentity.length > 0
+                onClicked: {
+                    inspector.deleteRequested(readerController.selectedIdentity)
+                    inspector.close()
                 }
             }
             Text {

@@ -25,18 +25,22 @@ public:
     bool autostart() const { return m_autostart; }
     bool bootSupported() const { return m_bootSupported; }
     bool available() const { return m_available; }
-    bool busy() const { return m_waitingTerminal || m_process.state() != QProcess::NotRunning; }
+    bool busy() const { return m_retryAuthorization || m_waitingTerminal || m_process.state() != QProcess::NotRunning; }
     QString message() const { return m_message; }
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void setAutostart(bool enabled);
     Q_INVOKABLE void setDatabasePath(const QString &path);
+    Q_INVOKABLE void clearHistory(const QString &database);
+    Q_INVOKABLE void deleteConversation(const QString &identity, const QString &database);
 
 signals:
     void changed();
     void databaseChanged(const QString &path);
+    void historyDeleted(const QString &path);
+    void historyResult(bool success, const QString &message);
 
 private:
-    void run(const QStringList &arguments, const QString &operation);
+    void run(const QStringList &arguments, const QString &operation, bool terminalAuthorization = false);
     void finished(int code, QProcess::ExitStatus status);
     void readDatabase();
     void complete(int code, QProcess::ExitStatus status, const QString &output, const QString &error);
@@ -46,6 +50,9 @@ private:
     std::unique_ptr<QTemporaryDir> m_authFiles;
     bool m_waitingTerminal = false;
     bool m_terminalMode = false;
+    bool m_retryAuthorization = false;
+    QStringList m_arguments;
+    QString m_historyDatabase;
     QString m_cli;
     QString m_root;
     QString m_database;

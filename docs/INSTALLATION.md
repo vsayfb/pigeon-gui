@@ -29,7 +29,7 @@ Add these repository secrets, using the same Cloudflare account as the CLI:
 - `CLOUDFLARE_ACCOUNT_ID`: your account ID.
 
 Run **Release and publish Pigeon GUI** manually, or push a `vX.Y.Z` tag matching
-this repository's CMake version, currently `v0.0.3`.
+this repository's CMake version, currently `v0.0.4`.
 
 This repository owns its installer, packaging and release workflow. It builds
 only GUI archives and stages its files under `/gui/`. Before deploying, it
@@ -63,8 +63,8 @@ With CMake, Ninja, a C++17 compiler, Python 3.10+, patchelf, and the Qt 6
 Quick/Controls/SQL/Network development/runtime modules installed:
 
 ```sh
-python3 packaging/release.py build --version 0.0.3 --output dist
-python3 packaging/release.py site --version 0.0.3 --artifacts dist --output dist/upload
+python3 packaging/release.py build --version 0.0.4 --output dist
+python3 packaging/release.py site --version 0.0.4 --artifacts dist --output dist/upload
 PIGEON_INSTALL_ROOT=/tmp/pigeon-gui-check/data PIGEON_BIN_DIR=/tmp/pigeon-gui-check/bin \
   sh packaging/install.sh --from "$PWD/dist/upload"
 ```
@@ -101,3 +101,9 @@ configured. Desktop authorization uses PolicyKit (`pkexec`), with a terminal sud
 as a fallback when PolicyKit is unavailable. These settings require an updated
 Pigeon CLI with `autostart` and `database` support. Opening an existing database
 in the viewer remains separate from changing collector storage.
+
+Conversation details include **Delete conversation**, and Settings includes
+**Clear all history**. Both require confirmation and operate on the database
+currently open in the viewer. Clearing all history also deletes saved DNS
+associations. Capture continues and can record new traffic immediately.
+Deletion is handled by the collector/control helper; GUI reads remain read-only.

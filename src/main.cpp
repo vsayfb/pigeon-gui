@@ -69,6 +69,9 @@ int main(int argc, char *argv[])
     QObject::connect(&settingsController, &pigeon::SettingsController::databaseChanged,
                      &controller, &pigeon::AppController::selectDatabase);
 
+    QObject::connect(&settingsController, &pigeon::SettingsController::historyDeleted,
+                     &controller, &pigeon::AppController::historyDeleted);
+
     QQmlApplicationEngine engine;
     // Qt 6.4 does not include this resource root in its default import paths.
     engine.addImportPath(QStringLiteral("qrc:/qt/qml"));
@@ -147,7 +150,17 @@ int main(int argc, char *argv[])
             if (settings)
                 QMetaObject::invokeMethod(settings, "open");
         });
-        QTimer::singleShot(1950, &app, &QCoreApplication::quit);
+        QTimer::singleShot(1800, window, [window] {
+            auto *settings = window->findChild<QObject *>(QStringLiteral("settingsDialog"));
+            if (settings)
+                QMetaObject::invokeMethod(settings, "close");
+            auto *confirmation = window->findChild<QObject *>(QStringLiteral("deleteHistoryDialog"));
+            if (confirmation) {
+                confirmation->setProperty("clearAll", true);
+                QMetaObject::invokeMethod(confirmation, "open");
+            }
+        });
+        QTimer::singleShot(2050, &app, &QCoreApplication::quit);
         const int result = app.exec();
         for (const QQmlError &warning : std::as_const(qmlWarnings))
             qCritical().noquote() << warning.toString();

@@ -39,6 +39,8 @@ SettingsController::SettingsController(QObject *parent) : QObject(parent)
             m_terminalPoll.stop();
             m_available = false;
             m_message = tr("Could not start the Pigeon CLI. Install or update the collector first.");
+            if (m_operation == QStringLiteral("history"))
+                emit historyResult(false, m_message);
             emit changed();
         }
     });
@@ -55,25 +57,28 @@ void SettingsController::readDatabase()
     }
 }
 
-void SettingsController::run(const QStringList &arguments, const QString &operation)
+void SettingsController::run(const QStringList &arguments, const QString &operation, bool terminalAuthorization)
 {
     if (busy())
         return;
     if (m_cli.isEmpty()) {
         m_message = tr("Install the Pigeon CLI to configure the collector.");
         m_available = false;
+        if (operation == QStringLiteral("history"))
+            emit historyResult(false, m_message);
         emit changed();
         return;
     }
     m_operation = operation;
+    m_arguments = arguments;
     m_terminalMode = false;
     auto environment = QProcessEnvironment::systemEnvironment();
     environment.insert(QStringLiteral("PIGEON_GUI_AUTH"), QStringLiteral("1"));
     m_process.setProcessEnvironment(environment);
     m_process.setProgram(m_cli);
     m_process.setArguments(arguments);
-    if (operation != QStringLiteral("status") &&
-        QStandardPaths::findExecutable(QStringLiteral("pkexec")).isEmpty()) {
+    if (terminalAuthorization || (operation != QStringLiteral("status") && operation != QStringLiteral("history") &&
+        QStandardPaths::findExecutable(QStringLiteral("pkexec")).isEmpty())) {
         QString terminal = QStandardPaths::findExecutable(QStringLiteral("x-terminal-emulator"));
         if (terminal.isEmpty())
             terminal = QStandardPaths::findExecutable(QStringLiteral("konsole"));
@@ -81,6 +86,8 @@ void SettingsController::run(const QStringList &arguments, const QString &operat
             terminal = QStandardPaths::findExecutable(QStringLiteral("xterm"));
         if (terminal.isEmpty()) {
             m_message = tr("Administrator authorization is unavailable. Configure Pigeon from a terminal.");
+            if (operation == QStringLiteral("history"))
+                emit historyResult(false, m_message);
             emit changed();
             return;
         }
@@ -88,6 +95,8 @@ void SettingsController::run(const QStringList &arguments, const QString &operat
         QFile script(m_authFiles->path() + QStringLiteral("/authorize.sh"));
         if (!m_authFiles->isValid() || !script.open(QIODevice::WriteOnly)) {
             m_message = tr("Could not prepare the authorization prompt.");
+            if (operation == QStringLiteral("history"))
+                emit historyResult(false, m_message);
             emit changed();
             return;
         }
@@ -137,6 +146,30 @@ void SettingsController::setDatabasePath(const QString &path)
     run({QStringLiteral("database"), m_pendingDatabase}, QStringLiteral("database"));
 }
 
+void SettingsController::clearHistory(const QString &database)
+{
+    if (busy())
+        return;
+    m_historyDatabase = QFileInfo(database).canonicalFilePath();
+    if (m_historyDatabase.isEmpty()) {
+        emit historyResult(false, tr("Open an existing traffic database first."));
+        return;
+    }
+    run({QStringLiteral("history"), QStringLiteral("clear"), m_historyDatabase}, QStringLiteral("history"));
+}
+
+void SettingsController::deleteConversation(const QString &identity, const QString &database)
+{
+    if (busy())
+        return;
+    m_historyDatabase = QFileInfo(database).canonicalFilePath();
+    if (m_historyDatabase.isEmpty() || identity.isEmpty() || identity.size() > 584) {
+        emit historyResult(false, tr("Select a recorded conversation first."));
+        return;
+    }
+    run({QStringLiteral("history"), QStringLiteral("delete"), identity, m_historyDatabase}, QStringLiteral("history"));
+}
+
 void SettingsController::finished(int code, QProcess::ExitStatus status)
 {
     if (m_terminalMode) {
@@ -176,16 +209,31 @@ void SettingsController::checkTerminal()
 void SettingsController::complete(int code, QProcess::ExitStatus status, const QString &output,
                                   const QString &error)
 {
+    if (m_operation == QStringLiteral("history") && code == 3 && !m_terminalMode) {
+        m_retryAuthorization = true;
+        QTimer::singleShot(0, this, [this] {
+            m_retryAuthorization = false;
+            run(m_arguments, QStringLiteral("history"), true);
+        });
+        emit changed();
+        return;
+    }
     if (code != 0 || status != QProcess::NormalExit) {
         m_message = error.isEmpty() ? tr("Settings were not changed. Authorization may have been cancelled.") : error;
         if (m_operation == QStringLiteral("status")) {
             m_available = false;
             m_message = tr("Install or update the Pigeon CLI to configure collector settings.");
         }
+        if (m_operation == QStringLiteral("history"))
+            emit historyResult(false, m_message);
         emit changed();
         return;
     }
-    if (m_operation == QStringLiteral("database")) {
+    if (m_operation == QStringLiteral("history")) {
+        m_message = output.isEmpty() ? tr("Recorded traffic deleted. New traffic can appear again.") : output;
+        emit historyDeleted(m_historyDatabase);
+        emit historyResult(true, m_message);
+    } else if (m_operation == QStringLiteral("database")) {
         readDatabase();
         emit databaseChanged(m_database);
         m_message = output;
@@ -196,6 +244,10 @@ void SettingsController::complete(int code, QProcess::ExitStatus status, const Q
         m_bootSupported = true;
         m_message = m_autostart ? tr("Pigeon starts automatically at boot.")
                                : tr("Start at boot is off. Current capture is left running.");
+    } else if (output.contains(QStringLiteral("Start at boot: unknown"))) {
+        m_available = true;
+        m_bootSupported = false;
+        m_message = tr("Boot startup status cannot be read. Update the Pigeon CLI; the service may still be enabled.");
     } else if (output.contains(QStringLiteral("Start at boot: unavailable"))) {
         m_available = true;
         m_bootSupported = false;

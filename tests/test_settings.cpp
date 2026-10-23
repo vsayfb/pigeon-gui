@@ -29,6 +29,9 @@ case "$1" in
         printf '%s\n' "$2" > "$PIGEON_INSTALL_ROOT/boot"
         printf 'Start at boot: %s\n' "$2" ;;
     esac ;;
+  history)
+    if [ -e "$PIGEON_INSTALL_ROOT/history-needs-auth" ] && [ "$PIGEON_GUI_AUTH" = 1 ]; then exit 3; fi
+    printf 'Recorded traffic deleted.\n' ;;
   database) printf '%s\n' "$2" > "$PIGEON_INSTALL_ROOT/database.conf"; echo 'Database location saved.' ;;
 esac
 )SH");
@@ -70,6 +73,16 @@ esac
         QTRY_VERIFY(!settings.busy());
         QCOMPARE(settings.databasePath(), path);
         QCOMPARE(changed.count(), 1);
+        QVERIFY(QDir().mkpath(root + "/new location"));
+        QFile history(path);
+        QVERIFY(history.open(QIODevice::WriteOnly));
+        history.close();
+        QSignalSpy deleted(&settings, &pigeon::SettingsController::historyDeleted);
+        QSignalSpy deletionResult(&settings, &pigeon::SettingsController::historyResult);
+        settings.deleteConversation("04c000020a04c633641401bb11", path);
+        QTRY_VERIFY(!settings.busy());
+        QCOMPARE(deleted.count(), 1);
+        QVERIFY(deletionResult.last().at(0).toBool());
         // A terminal can return immediately while the privileged command is pending.
         QVERIFY(policyKit.remove());
         QVERIFY(cancel.remove());
@@ -86,6 +99,13 @@ esac
         QVERIFY(mode.open(QIODevice::ReadOnly));
         QCOMPARE(mode.readAll().trimmed(), QByteArray("0"));
         QVERIFY(settings.available());
+        QFile needsAuth(root + "/history-needs-auth");
+        QVERIFY(needsAuth.open(QIODevice::WriteOnly));
+        needsAuth.close();
+        settings.clearHistory(path);
+        QTRY_VERIFY(!settings.busy());
+        QCOMPARE(deleted.count(), 2);
+        QVERIFY(deletionResult.last().at(0).toBool());
         qputenv("PATH", oldPath);
         qunsetenv("PIGEON_INSTALL_ROOT");
     }

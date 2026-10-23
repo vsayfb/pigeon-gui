@@ -19,6 +19,7 @@ class ReaderWorker : public QObject {
 public:
     ReaderWorker() = default;
 public slots:
+    void resetSampling();
     void refresh(quint64 token, const QString &path, const ReadOptions &options);
     void finalize(quint64 token, bool accepted);
 
@@ -109,6 +110,7 @@ public:
     Q_INVOKABLE QString addressScope(const QString &ip) const;
     Q_INVOKABLE void selectDatabase(const QString &path);
     Q_INVOKABLE void retryRead();
+    void historyDeleted(const QString &database);
     Q_INVOKABLE void setSearch(const QString &search);
     Q_INVOKABLE void setProtocol(int protocol);
     Q_INVOKABLE void setFamily(int family);
@@ -126,6 +128,7 @@ signals:
     void stateChanged();
     void filtersChanged();
     void selectionChanged();
+    void resetSamplingRequested();
     void refreshRequested(quint64 token, const QString &path, const pigeon::ReadOptions &options);
     void finalizeRequested(quint64 token, bool accepted);
 

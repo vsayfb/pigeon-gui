@@ -9,6 +9,14 @@
 
 namespace pigeon {
 
+void ReaderWorker::resetSampling()
+{
+    m_sampler.reset();
+    m_candidateSampler.reset();
+    m_samplePath.clear();
+    m_candidateReady = false;
+}
+
 void ReaderWorker::refresh(quint64 token, const QString &path, const ReadOptions &options)
 {
     if (!m_clock.isValid())
@@ -55,6 +63,7 @@ AppController::AppController(QObject *parent)
     auto *worker = new ReaderWorker;
     worker->moveToThread(&m_thread);
     connect(&m_thread, &QThread::finished, worker, &QObject::deleteLater);
+    connect(this, &AppController::resetSamplingRequested, worker, &ReaderWorker::resetSampling, Qt::QueuedConnection);
     connect(this, &AppController::refreshRequested, worker, &ReaderWorker::refresh,
             Qt::QueuedConnection);
     connect(this, &AppController::finalizeRequested, worker, &ReaderWorker::finalize,
@@ -203,6 +212,22 @@ void AppController::selectDatabase(const QString &requestedPath)
     emit stateChanged();
     if (!m_inFlight)
         requestRefresh();
+}
+
+void AppController::historyDeleted(const QString &database)
+{
+    if (QFileInfo(database).canonicalFilePath() != QFileInfo(m_path).canonicalFilePath())
+        return;
+    ++m_generation;
+    emit resetSamplingRequested();
+    m_snapshot = {};
+    m_hasSnapshot = false;
+    m_live.setRows({});
+    m_top.setRows({});
+    m_applications.setRows({});
+    m_endpoints.setRows({});
+    clearSelection();
+    retryRead();
 }
 
 void AppController::retryRead()

@@ -5,6 +5,7 @@ import Pigeon.Gui 1.0
 Button {
     id: control
     property bool primary: false
+    property bool destructive: false
     implicitHeight: 34
     implicitWidth: Math.max(36, implicitContentWidth + 28)
     padding: 8
@@ -13,7 +14,7 @@ Button {
 
     contentItem: Text {
         text: control.text
-        color: control.primary ? "white" : Theme.textSecondary
+        color: (control.primary || control.destructive) ? "white" : Theme.textSecondary
         font.pixelSize: Theme.textPixels(11)
         font.weight: Font.Medium
         horizontalAlignment: Text.AlignHCenter
@@ -22,9 +23,11 @@ Button {
 
     background: Rectangle {
         radius: 8
-        color: control.primary ? Theme.accent
+        color: control.destructive ? (control.hovered ? "#AD2538" : "#C93446")
+            : control.primary ? Theme.accent
             : control.hovered ? Theme.accentSurface : Theme.surface
-        border.color: control.activeFocus ? Theme.accent : Theme.border
+        border.color: control.activeFocus ? Theme.accent
+            : control.destructive ? "#C93446" : Theme.border
         border.width: control.activeFocus ? 2 : 1
     }
 }
