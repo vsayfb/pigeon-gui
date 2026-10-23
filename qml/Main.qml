@@ -31,6 +31,13 @@ ApplicationWindow {
                                    qsTr("Top Traffic"), qsTr("Processes"), qsTr("New Endpoints")]
     readonly property var symbols: ["▦", "∿", "▥", "▤", "◎"]
 
+    function navigateTo(page) {
+        // A process drill-down belongs to the view opened from Processes.
+        // Explicit navigation returns to all processes, keeping other filters.
+        readerController.clearApplication()
+        root.currentPage = page
+    }
+
     Binding {
         target: captureController
         property: "databasePath"
@@ -433,7 +440,7 @@ ApplicationWindow {
                         text: root.titles[index]
                         symbol: root.symbols[index]
                         selected: root.currentPage === index
-                        onClicked: root.currentPage = index
+                        onClicked: root.navigateTo(index)
                     }
                 }
                 Item { Layout.fillHeight: true }
@@ -641,7 +648,7 @@ ApplicationWindow {
                                 text: root.titles[index]
                                 symbol: ""
                                 selected: root.currentPage === index
-                                onClicked: root.currentPage = index
+                                onClicked: root.navigateTo(index)
                                 onActiveFocusChanged: {
                                     if (activeFocus)
                                         compactNavigation.contentX = Math.max(0,
