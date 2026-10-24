@@ -7,6 +7,7 @@ import "../theme/Format.js" as Format
 Item {
     id: page
     signal conversationActivated()
+    signal deleteRequested(var identities)
 
     Flickable {
         id: scroll
@@ -138,6 +139,7 @@ Item {
             }
 
             ConversationTable {
+                onDeleteRequested: function(identities) { page.deleteRequested(identities) }
                 Layout.fillWidth: true
                 Layout.preferredHeight: 350
                 sourceModel: readerController.liveModel

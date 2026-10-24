@@ -7,6 +7,7 @@ Item {
     id: page
     property bool live: true
     signal conversationActivated()
+    signal deleteRequested(var identities)
 
     Flickable {
         id: scroll
@@ -48,6 +49,7 @@ Item {
             }
 
             ConversationTable {
+                onDeleteRequested: function(identities) { page.deleteRequested(identities) }
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.max(310, page.height - (page.live ? 440 : 190))
                 sourceModel: page.live ? readerController.liveModel : readerController.topModel

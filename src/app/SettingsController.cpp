@@ -1,5 +1,7 @@
 #include "app/SettingsController.h"
 
+#include <algorithm>
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -40,7 +42,7 @@ SettingsController::SettingsController(QObject *parent) : QObject(parent)
             m_available = false;
             m_message = tr("Could not start the Pigeon CLI. Install or update the collector first.");
             if (m_operation == QStringLiteral("history"))
-                emit historyResult(false, m_message);
+                historyFailed(m_message);
             emit changed();
         }
     });
@@ -65,7 +67,7 @@ void SettingsController::run(const QStringList &arguments, const QString &operat
         m_message = tr("Install the Pigeon CLI to configure the collector.");
         m_available = false;
         if (operation == QStringLiteral("history"))
-            emit historyResult(false, m_message);
+            historyFailed(m_message);
         emit changed();
         return;
     }
@@ -87,7 +89,7 @@ void SettingsController::run(const QStringList &arguments, const QString &operat
         if (terminal.isEmpty()) {
             m_message = tr("Administrator authorization is unavailable. Configure Pigeon from a terminal.");
             if (operation == QStringLiteral("history"))
-                emit historyResult(false, m_message);
+                historyFailed(m_message);
             emit changed();
             return;
         }
@@ -96,7 +98,7 @@ void SettingsController::run(const QStringList &arguments, const QString &operat
         if (!m_authFiles->isValid() || !script.open(QIODevice::WriteOnly)) {
             m_message = tr("Could not prepare the authorization prompt.");
             if (operation == QStringLiteral("history"))
-                emit historyResult(false, m_message);
+                historyFailed(m_message);
             emit changed();
             return;
         }
@@ -118,7 +120,9 @@ void SettingsController::run(const QStringList &arguments, const QString &operat
         m_terminalPoll.start();
     }
     m_message = operation == QStringLiteral("status") ? tr("Checking collector settings…")
-                                                      : tr("Applying settings… Complete the administrator prompt if shown.");
+        : operation == QStringLiteral("history") && m_deleteTotal > 0
+            ? tr("Deleting conversation %1 of %2…").arg(m_deleted + 1).arg(m_deleteTotal)
+            : tr("Applying settings… Complete the administrator prompt if shown.");
     m_process.start();
     emit changed();
 }
@@ -160,14 +164,47 @@ void SettingsController::clearHistory(const QString &database)
 
 void SettingsController::deleteConversation(const QString &identity, const QString &database)
 {
+    deleteConversations({identity}, database);
+}
+
+void SettingsController::deleteConversations(const QStringList &identities, const QString &database)
+{
     if (busy())
         return;
     m_historyDatabase = QFileInfo(database).canonicalFilePath();
-    if (m_historyDatabase.isEmpty() || identity.isEmpty() || identity.size() > 584) {
-        emit historyResult(false, tr("Select a recorded conversation first."));
+    QStringList unique = identities;
+    unique.removeDuplicates();
+    if (m_historyDatabase.isEmpty() || unique.isEmpty() || unique.size() > 200) {
+        emit historyResult(false, tr("Select between 1 and 200 recorded conversations first."));
         return;
     }
-    run({QStringLiteral("history"), QStringLiteral("delete"), identity, m_historyDatabase}, QStringLiteral("history"));
+    for (const auto &identity : unique) {
+        if (identity.isEmpty() || identity.size() > 584 || identity.size() % 2
+            || std::any_of(identity.cbegin(), identity.cend(), [](QChar c) {
+                return !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
+            })) {
+            emit historyResult(false, tr("The selected conversation identity is invalid."));
+            return;
+        }
+    }
+    m_deletions = unique;
+    m_deleted = 0;
+    m_deleteTotal = unique.size();
+    run({QStringLiteral("history"), QStringLiteral("delete"), m_deletions.takeFirst(), m_historyDatabase},
+        QStringLiteral("history"));
+}
+
+void SettingsController::historyFailed(const QString &message)
+{
+    m_message = m_deleteTotal > 1
+        ? tr("Completed %1 of %2 deletions. Remaining conversations were not deleted. %3")
+            .arg(m_deleted).arg(m_deleteTotal).arg(message) : message;
+    m_deletions.clear();
+    m_deleteTotal = 0;
+    if (m_deleted > 0)
+        emit historyDeleted(m_historyDatabase);
+    m_deleted = 0;
+    emit historyResult(false, m_message);
 }
 
 void SettingsController::finished(int code, QProcess::ExitStatus status)
@@ -194,7 +231,7 @@ void SettingsController::checkTerminal()
         return;
     bool valid = false;
     const int code = result.readAll().trimmed().toInt(&valid);
-    if (!valid)
+    if (!valid || m_process.state() != QProcess::NotRunning)
         return;
     QFile output(m_authFiles->path() + QStringLiteral("/output"));
     QFile error(m_authFiles->path() + QStringLiteral("/error"));
@@ -225,12 +262,28 @@ void SettingsController::complete(int code, QProcess::ExitStatus status, const Q
             m_message = tr("Install or update the Pigeon CLI to configure collector settings.");
         }
         if (m_operation == QStringLiteral("history"))
-            emit historyResult(false, m_message);
+            historyFailed(m_message);
         emit changed();
         return;
     }
     if (m_operation == QStringLiteral("history")) {
-        m_message = output.isEmpty() ? tr("Recorded traffic deleted. New traffic can appear again.") : output;
+        if (m_deleteTotal > 0)
+            ++m_deleted;
+        if (!m_deletions.isEmpty()) {
+            m_retryAuthorization = true;
+            QTimer::singleShot(0, this, [this] {
+                m_retryAuthorization = false;
+                run({QStringLiteral("history"), QStringLiteral("delete"), m_deletions.takeFirst(), m_historyDatabase},
+                    QStringLiteral("history"));
+            });
+            emit changed();
+            return;
+        }
+        m_message = m_deleteTotal > 1
+            ? tr("Completed %1 deletions. New traffic can appear again.").arg(m_deleted)
+            : output.isEmpty() ? tr("Recorded traffic deleted. New traffic can appear again.") : output;
+        m_deleteTotal = 0;
+        m_deleted = 0;
         emit historyDeleted(m_historyDatabase);
         emit historyResult(true, m_message);
     } else if (m_operation == QStringLiteral("database")) {

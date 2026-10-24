@@ -107,3 +107,17 @@ Conversation details include **Delete conversation**, and Settings includes
 currently open in the viewer. Clearing all history also deletes saved DNS
 associations. Capture continues and can record new traffic immediately.
 Deletion is handled by the collector/control helper; GUI reads remain read-only.
+
+### Deleting selected conversations
+
+Conversation tables in Overview, Live Traffic, and Top Traffic have row checkboxes.
+Use Space on a focused row to toggle its selection, or **Select shown** to select
+up to the 200 displayed conversations. **Delete selected…** confirms the selected
+count and database before deletion. Enter still opens conversation details.
+Selections follow conversation identities when live rows reorder; changing filters,
+databases, or screens clears them.
+
+Deletion uses the installed CLI and does not require a collector update for this
+feature. Selected rows are deleted individually; a failure stops the batch and
+reports how many deletion commands completed, then refreshes the view. New traffic
+may recreate deleted conversations. Unselected history is preserved.

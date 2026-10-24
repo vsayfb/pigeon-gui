@@ -8,11 +8,46 @@ SurfaceCard {
     id: table
     property var sourceModel: null
     signal conversationActivated(string identity)
+    signal deleteRequested(var identities)
+    property var selectedIdentities: []
+    property string selectionDatabase: ""
     property bool live: true
+
+    function toggleSelection(identity) {
+        if (settingsController.busy)
+            return
+        let selected = selectedIdentities.slice()
+        const index = selected.indexOf(identity)
+        if (index >= 0)
+            selected.splice(index, 1)
+        else if (selected.length < 200)
+            selected.push(identity)
+        selectionDatabase = readerController.databasePath
+        selectedIdentities = selected
+    }
+
+    function selectShown() {
+        selectionDatabase = readerController.databasePath
+        selectedIdentities = sourceModel ? sourceModel.identities() : []
+    }
+
+    onVisibleChanged: { if (!visible) selectedIdentities = [] }
+    Connections {
+        target: readerController
+        function onFiltersChanged() { table.selectedIdentities = [] }
+        function onStateChanged() {
+            if (table.selectionDatabase !== readerController.databasePath)
+                table.selectedIdentities = []
+        }
+    }
+    Connections {
+        target: settingsController
+        function onHistoryDeleted(path) { table.selectedIdentities = [] }
+    }
     property string emptyTitle: qsTr("No matching conversations")
     property string emptyDetail: qsTr("No rows match the current scope.")
 
-    readonly property int tableWidth: 1135 + (live ? 100 : 0)
+    readonly property int tableWidth: 1175 + (live ? 100 : 0)
     readonly property real domainWidth: 220 + Math.max(0, horizontal.contentWidth - tableWidth) * 0.6
     readonly property real ipWidth: 190 + Math.max(0, horizontal.contentWidth - tableWidth) * 0.4
     implicitHeight: 420
@@ -22,6 +57,33 @@ SurfaceCard {
         anchors.fill: parent
         anchors.margins: 1
         spacing: 0
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.margins: 8
+            spacing: 10
+            ActionButton {
+                text: qsTr("Select shown")
+                enabled: list.count > 0 && !settingsController.busy
+                onClicked: table.selectShown()
+            }
+            Label {
+                text: qsTr("%1 selected").arg(table.selectedIdentities.length)
+                color: Theme.textSecondary
+            }
+            Item { Layout.fillWidth: true }
+            ActionButton {
+                text: qsTr("Clear selection")
+                enabled: table.selectedIdentities.length > 0
+                onClicked: table.selectedIdentities = []
+            }
+            ActionButton {
+                text: qsTr("Delete selected…")
+                destructive: true
+                enabled: table.selectedIdentities.length > 0 && !settingsController.busy
+                onClicked: table.deleteRequested(table.selectedIdentities.slice())
+            }
+        }
 
         Flickable {
             id: horizontal
@@ -47,6 +109,7 @@ SurfaceCard {
                     radius: 12
                     Row {
                         anchors.fill: parent
+                        Item { width: 40; height: parent.height }
                         CellText { width: 150; height: parent.height; label: qsTr("PROCESS"); ink: Theme.textMuted }
                         CellText { width: table.domainWidth; height: parent.height; label: qsTr("DOMAIN"); ink: Theme.textMuted }
                         CellText { width: table.ipWidth; height: parent.height; label: qsTr("IP"); ink: Theme.textMuted }
@@ -68,7 +131,7 @@ SurfaceCard {
                     model: table.sourceModel
                     activeFocusOnTab: true
                 Accessible.name: qsTr("Conversations list")
-                Accessible.description: qsTr("Columns: process, domain, IP, port, protocol, download, upload, direction, recent rate, last seen. Use Up and Down to select a row, Left and Right to scroll, and Enter to open details.")
+                Accessible.description: qsTr("Columns: process, domain, IP, port, protocol, download, upload, direction, recent rate, last seen. Use Up and Down to focus a row, Space to toggle selection, Left and Right to scroll, and Enter to open details.")
                 Keys.onLeftPressed: horizontal.contentX = Math.max(0, horizontal.contentX - 120)
                 Keys.onRightPressed: horizontal.contentX = Math.min(
                     horizontal.contentWidth - horizontal.width, horizontal.contentX + 120)
@@ -86,7 +149,7 @@ SurfaceCard {
                     }
                     Keys.onSpacePressed: {
                         if (list.currentItem)
-                            table.conversationActivated(list.currentItem.identity)
+                            table.toggleSelection(list.currentItem.identity)
                     }
                     boundsBehavior: Flickable.StopAtBounds
                     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -113,13 +176,15 @@ SurfaceCard {
 
                         width: list.width
                         height: Math.max(39, Theme.textPixels(33))
-                        color: readerController.selectedIdentity === row.identity
+                        color: table.selectedIdentities.indexOf(row.identity) >= 0 || readerController.selectedIdentity === row.identity
                             ? Theme.accentSurface : index % 2 ? Theme.rowAlternate : Theme.surface
                         border.width: rowHover.hovered || (list.activeFocus && list.currentIndex === index) ? 2 : 0
                         border.color: Theme.accent
                         HoverHandler { id: rowHover }
                         TapHandler {
-                            onTapped: {
+                            onTapped: function(eventPoint) {
+                                if (eventPoint.position.x < 40)
+                                    return
                                 list.currentIndex = row.index
                                 list.forceActiveFocus()
                                 table.conversationActivated(row.identity)
@@ -128,6 +193,14 @@ SurfaceCard {
                         Row {
                             height: parent.height
                             width: parent.width
+                            CheckBox {
+                                width: 40
+                                height: parent.height
+                                checked: table.selectedIdentities.indexOf(row.identity) >= 0
+                                enabled: !settingsController.busy
+                                Accessible.name: qsTr("Select conversation: %1, %2").arg(row.application).arg(row.remoteIp)
+                                onClicked: table.toggleSelection(row.identity)
+                            }
                             ApplicationCell {
                                 width: 150
                                 height: parent.height

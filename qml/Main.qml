@@ -31,6 +31,14 @@ ApplicationWindow {
                                    qsTr("Top Traffic"), qsTr("Processes"), qsTr("New Endpoints")]
     readonly property var symbols: ["▦", "∿", "▥", "▤", "◎"]
 
+    function confirmConversationDeletion(identities) {
+        historyConfirm.clearAll = false
+        historyConfirm.identities = identities.slice()
+        historyConfirm.conversation = ""
+        historyConfirm.database = readerController.databasePath
+        historyConfirm.open()
+    }
+
     function navigateTo(page) {
         // A process drill-down belongs to the view opened from Processes.
         // Explicit navigation returns to all processes, keeping other filters.
@@ -107,9 +115,10 @@ ApplicationWindow {
         objectName: "deleteHistoryDialog"
         property string conversation: ""
         property bool clearAll: false
-        property string identity: ""
+        property var identities: []
         property string database: ""
-        title: clearAll ? qsTr("Clear all history?") : qsTr("Delete conversation?")
+        title: clearAll ? qsTr("Clear all history?") : identities.length > 1
+            ? qsTr("Delete %1 conversations?").arg(identities.length) : qsTr("Delete conversation?")
         anchors.centerIn: parent
         width: Math.min(root.width - 32, 500)
         modal: true
@@ -143,7 +152,8 @@ ApplicationWindow {
                     onClicked: historyConfirm.reject()
                 }
                 ActionButton {
-                    text: historyConfirm.clearAll ? qsTr("Clear history") : qsTr("Delete conversation")
+                    text: historyConfirm.clearAll ? qsTr("Clear history") : historyConfirm.identities.length > 1
+                        ? qsTr("Delete %1 conversations").arg(historyConfirm.identities.length) : qsTr("Delete conversation")
                     destructive: true
                     enabled: !settingsController.busy
                     onClicked: historyConfirm.accept()
@@ -154,7 +164,7 @@ ApplicationWindow {
             if (clearAll)
                 settingsController.clearHistory(database)
             else
-                settingsController.deleteConversation(identity, database)
+                settingsController.deleteConversations(identities, database)
         }
         contentItem: ColumnLayout {
             spacing: 18
@@ -162,6 +172,8 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 text: historyConfirm.clearAll
                     ? qsTr("All conversations and saved DNS associations will be permanently deleted.")
+                    : historyConfirm.identities.length > 1
+                    ? qsTr("These %1 selected conversations will be permanently deleted.").arg(historyConfirm.identities.length)
                     : qsTr("This recorded conversation will be permanently deleted.")
                 wrapMode: Text.Wrap
                 color: Theme.textSecondary
@@ -185,7 +197,7 @@ ApplicationWindow {
             }
             Label {
                 Layout.fillWidth: true
-                visible: !historyConfirm.clearAll
+                visible: !historyConfirm.clearAll && historyConfirm.conversation.length > 0
                 text: historyConfirm.conversation
                 textFormat: Text.PlainText
                 wrapMode: Text.WrapAnywhere
@@ -368,7 +380,7 @@ ApplicationWindow {
                 enabled: !settingsController.busy && readerController.databasePath.length > 0
                 onClicked: {
                     historyConfirm.clearAll = true
-                    historyConfirm.identity = ""
+                    historyConfirm.identities = []
                     historyConfirm.database = readerController.databasePath
                     historyConfirm.open()
                 }
@@ -686,12 +698,17 @@ ApplicationWindow {
                 Layout.topMargin: 12
                 visible: readerController.hasSnapshot
                 currentIndex: root.currentPage
-                OverviewPage { onConversationActivated: detailsDrawer.open() }
+                OverviewPage {
+                    onConversationActivated: detailsDrawer.open()
+                    onDeleteRequested: function(identities) { root.confirmConversationDeletion(identities) }
+                }
                 TrafficPage {
+                    onDeleteRequested: function(identities) { root.confirmConversationDeletion(identities) }
                     live: true
                     onConversationActivated: detailsDrawer.open()
                 }
                 TrafficPage {
+                    onDeleteRequested: function(identities) { root.confirmConversationDeletion(identities) }
                     live: false
                     onConversationActivated: detailsDrawer.open()
                 }
@@ -720,7 +737,7 @@ ApplicationWindow {
             historyConfirm.conversation = (readerController.selectedDetails.application || "")
                 + " · " + (readerController.selectedDetails.remoteIp || "")
                 + ":" + (readerController.selectedDetails.remotePort || 0)
-            historyConfirm.identity = identity
+            historyConfirm.identities = [identity]
             historyConfirm.database = readerController.databasePath
             historyConfirm.open()
         }

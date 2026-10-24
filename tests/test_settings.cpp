@@ -8,6 +8,77 @@
 class SettingsTest : public QObject {
     Q_OBJECT
 private slots:
+    void multiDelete() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString root = temporary.path();
+        QFile cli(root + "/pigeon");
+        QVERIFY(cli.open(QIODevice::WriteOnly));
+        cli.write(R"SH(#!/bin/sh
+printf '%s\n' "$3" >> "$PIGEON_INSTALL_ROOT/deletions"
+if [ -f "$PIGEON_INSTALL_ROOT/fail" ] && [ "$3" = '04c000020a04c633641401bb11' ]; then
+    echo 'Deletion failed' >&2
+    exit 1
+fi
+printf 'Deleted.\n'
+)SH");
+        cli.close();
+        QVERIFY(cli.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
+        QFile database(root + "/history.db");
+        QVERIFY(database.open(QIODevice::WriteOnly));
+        database.close();
+        const QByteArray oldPath = qgetenv("PATH");
+        const QByteArray oldRoot = qgetenv("PIGEON_INSTALL_ROOT");
+        qputenv("PATH", root.toUtf8() + ':' + oldPath);
+        qputenv("PIGEON_INSTALL_ROOT", root.toUtf8());
+        pigeon::SettingsController settings;
+        QSignalSpy result(&settings, &pigeon::SettingsController::historyResult);
+        QSignalSpy deleted(&settings, &pigeon::SettingsController::historyDeleted);
+        const QString a = "04c000020a04c633641401bb11";
+        const QString b = "04c000020a04c633641401bc11";
+        const QString c = "04c000020a04c633641401bd11";
+        settings.deleteConversations({a, b, a}, database.fileName());
+        // A second operation must not replace an in-flight batch.
+        settings.clearHistory(database.fileName());
+        QTRY_COMPARE(result.count(), 1);
+        QVERIFY(!settings.busy());
+        QVERIFY(result.last().at(0).toBool());
+        QVERIFY(result.last().at(1).toString().contains("2 deletions"));
+        QCOMPARE(deleted.count(), 1);
+        QFile log(root + "/deletions");
+        QVERIFY(log.open(QIODevice::ReadOnly));
+        QCOMPARE(log.readAll(), (a + "\n" + b + "\n").toUtf8());
+        log.close();
+        QVERIFY(log.remove());
+
+        QFile failure(root + "/fail");
+        QVERIFY(failure.open(QIODevice::WriteOnly));
+        failure.close();
+        settings.deleteConversations({b, a, c}, database.fileName());
+        QTRY_COMPARE(result.count(), 2);
+        QVERIFY(!settings.busy());
+        QVERIFY(!result.last().at(0).toBool());
+        QVERIFY(result.last().at(1).toString().contains("1 of 3"));
+        QCOMPARE(deleted.count(), 2); // Refresh even after partial success.
+        QVERIFY(log.open(QIODevice::ReadOnly));
+        QCOMPARE(log.readAll(), (b + "\n" + a + "\n").toUtf8());
+        log.close();
+        QVERIFY(log.remove());
+
+        settings.deleteConversations({b, "not-an-identity"}, database.fileName());
+        QCOMPARE(result.count(), 3);
+        QVERIFY(!result.last().at(0).toBool());
+        QVERIFY(!log.exists()); // Validate the entire batch before deleting any row.
+        settings.deleteConversations({}, database.fileName());
+        QCOMPARE(result.count(), 4);
+        QVERIFY(!log.exists());
+        qputenv("PATH", oldPath);
+        if (oldRoot.isNull())
+            qunsetenv("PIGEON_INSTALL_ROOT");
+        else
+            qputenv("PIGEON_INSTALL_ROOT", oldRoot);
+    }
+
     void collectorSettings() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
@@ -106,6 +177,12 @@ esac
         QTRY_VERIFY(!settings.busy());
         QCOMPARE(deleted.count(), 2);
         QVERIFY(deletionResult.last().at(0).toBool());
+        settings.deleteConversations({"04c000020a04c633641401bb11", "04c000020a04c633641401bc11"}, path);
+        QTRY_VERIFY(!settings.busy());
+        QCOMPARE(deleted.count(), 3);
+        QCOMPARE(deletionResult.count(), 3);
+        QVERIFY(deletionResult.last().at(0).toBool());
+        QVERIFY(deletionResult.last().at(1).toString().contains("2 deletions"));
         qputenv("PATH", oldPath);
         qunsetenv("PIGEON_INSTALL_ROOT");
     }

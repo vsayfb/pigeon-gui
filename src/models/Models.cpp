@@ -4,6 +4,14 @@
 
 namespace pigeon {
 
+QStringList ConversationsModel::identities() const
+{
+    QStringList result;
+    for (const auto &row : m_rows)
+        result.append(QString::fromLatin1(row.key().toHex()));
+    return result;
+}
+
 QVariant ConversationsModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size())

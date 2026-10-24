@@ -32,6 +32,7 @@ public:
     Q_INVOKABLE void setDatabasePath(const QString &path);
     Q_INVOKABLE void clearHistory(const QString &database);
     Q_INVOKABLE void deleteConversation(const QString &identity, const QString &database);
+    Q_INVOKABLE void deleteConversations(const QStringList &identities, const QString &database);
 
 signals:
     void changed();
@@ -43,6 +44,10 @@ private:
     void run(const QStringList &arguments, const QString &operation, bool terminalAuthorization = false);
     void finished(int code, QProcess::ExitStatus status);
     void readDatabase();
+    void historyFailed(const QString &message);
+    QStringList m_deletions;
+    int m_deleted = 0;
+    int m_deleteTotal = 0;
     void complete(int code, QProcess::ExitStatus status, const QString &output, const QString &error);
     void checkTerminal();
     QProcess m_process;
