@@ -131,8 +131,7 @@ Item {
                     font.weight: Font.DemiBold
                 }
                 Text {
-                    text: readerController.recentSeconds === 0 ? qsTr("All recorded · newest 200 matches")
-                        : qsTr("%1s window · newest 200 matches").arg(readerController.recentSeconds)
+                    text: qsTr("Last 30s · all processes · newest 200")
                     color: Theme.textSecondary
                     font.pixelSize: Theme.textPixels(11)
                 }
@@ -142,13 +141,14 @@ Item {
                 onDeleteRequested: function(identities) { page.deleteRequested(identities) }
                 Layout.fillWidth: true
                 Layout.preferredHeight: 350
-                sourceModel: readerController.liveModel
+                sourceModel: readerController.overviewModel
                 live: true
                 onConversationActivated: function(identity) {
-                    readerController.selectConversation(identity, true)
+                    readerController.selectConversation(identity, true, true)
                     page.conversationActivated()
                 }
-                emptyDetail: qsTr("No matching observations in this scope. Older recordings remain in Top Traffic.")
+                emptyTitle: qsTr("No recent conversations")
+                emptyDetail: qsTr("No conversations were recorded in the last 30 seconds. Older recordings remain in Top Traffic.")
             }
 
             Text {

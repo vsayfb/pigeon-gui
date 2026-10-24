@@ -75,6 +75,7 @@ class DataTests : public QObject {
     Q_OBJECT
 private slots:
     void exactWideIntegerFormatting();
+    void overviewRatesIgnoreWorkspaceFilters();
     void missingAndUnsupportedDb();
     void readOnlySnapshotAndFilters();
     void exactRatesAndReset();
@@ -85,6 +86,44 @@ private slots:
     void quicMetadataAndStableIdentity();
     void espVersionSevenAndFilters();
 };
+
+void DataTests::overviewRatesIgnoreWorkspaceFilters()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = createFixture(dir.filePath("overview.db"));
+    QVERIFY(!path.isEmpty());
+    DatabaseReader reader;
+    ReadOptions options;
+    options.protocol = 17;
+    Snapshot first;
+    QString error;
+    QVERIFY2(reader.read(path, options, 100, first, error), qPrintable(error));
+    QCOMPARE(first.live.size(), 1);
+    QCOMPARE(first.overview.size(), 3);
+    RateSampler sampler;
+    sampler.sample(first, 0);
+    QVERIFY(execute(path, {patchCounterSql(9007199254741040LL)}));
+    options.search = "no-such-domain";
+    Snapshot second;
+    QVERIFY2(reader.read(path, options, 101, second, error), qPrintable(error));
+    sampler.sample(second, 1.5);
+    QCOMPARE(second.live.size(), 0);
+    QCOMPARE(second.overview.size(), 3);
+    bool found = false;
+    for (const auto &row : second.overview) {
+        if (row.application == "firefox") {
+            found = true;
+            QVERIFY(row.rateValid);
+            QCOMPARE(row.rateDown, 40.0 / 1.5);
+        }
+    }
+    QVERIFY(found);
+    sampler.reset();
+    sampler.sample(second, 2);
+    for (const auto &row : second.overview)
+        QVERIFY(!row.rateValid);
+}
 
 void DataTests::exactWideIntegerFormatting()
 {

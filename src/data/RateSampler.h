@@ -25,6 +25,8 @@ private:
     };
 
     QHash<QByteArray, RowBaseline> m_rows;
+    QHash<QByteArray, RowBaseline> m_overviewRows;
+    void sampleRows(QVector<Conversation> &rows, QHash<QByteArray, RowBaseline> &previous, double now);
     double m_liveReadAt = -1;
     Counter128 m_previousDown;
     Counter128 m_previousUp;

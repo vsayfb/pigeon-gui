@@ -53,6 +53,7 @@ void ReaderWorker::finalize(quint64 token, bool accepted)
 
 AppController::AppController(QObject *parent)
     : QObject(parent)
+    , m_overview(this)
     , m_live(this)
     , m_top(this)
     , m_applications(this)
@@ -200,6 +201,7 @@ void AppController::selectDatabase(const QString &requestedPath)
     m_paused = false; // explicitly opening a different database resumes sampling
     m_hasSnapshot = false;
     m_snapshot = {};
+    m_overview.setRows({});
     m_live.setRows({});
     m_top.setRows({});
     m_applications.setRows({});
@@ -222,6 +224,7 @@ void AppController::historyDeleted(const QString &database)
     emit resetSamplingRequested();
     m_snapshot = {};
     m_hasSnapshot = false;
+    m_overview.setRows({});
     m_live.setRows({});
     m_top.setRows({});
     m_applications.setRows({});
@@ -278,6 +281,7 @@ void AppController::acceptResult(quint64 token, const QString &path, bool ok,
         m_error.clear();
         m_status = QStringLiteral("Read-only snapshot · ")
                  + QDateTime::fromSecsSinceEpoch(snapshot.loadedAt).toString(Qt::ISODate);
+        m_overview.setRows(snapshot.overview);
         m_live.setRows(snapshot.live);
         m_top.setRows(snapshot.top);
         m_applications.setRows(snapshot.applications);
@@ -408,12 +412,13 @@ void AppController::setPaused(bool paused)
     emit stateChanged();
 }
 
-void AppController::selectConversation(const QString &identity, bool live)
+void AppController::selectConversation(const QString &identity, bool live, bool overview)
 {
-    if (m_selectedIdentity == identity && m_selectedLive == live)
+    if (m_selectedIdentity == identity && m_selectedLive == live && m_selectedOverview == overview)
         return;
     m_selectedIdentity = identity;
     m_selectedLive = live;
+    m_selectedOverview = overview;
     m_selectedDetails.clear();
     updateSelection();
 }
@@ -433,7 +438,7 @@ void AppController::updateSelection()
         return;
 
     Conversation row;
-    const bool found = (m_selectedLive ? m_live : m_top).findIdentity(m_selectedIdentity, row);
+    const bool found = (m_selectedOverview ? m_overview : m_selectedLive ? m_live : m_top).findIdentity(m_selectedIdentity, row);
     if (!found) {
         // Keep the last known detail visible, marked as not in the current view.
         m_selectedDetails.insert(QStringLiteral("inCurrentView"), false);

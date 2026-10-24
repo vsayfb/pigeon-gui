@@ -8,6 +8,7 @@ namespace pigeon {
 void RateSampler::reset()
 {
     m_rows.clear();
+    m_overviewRows.clear();
     m_liveReadAt = -1;
     m_previousDown = {};
     m_previousUp = {};
@@ -46,13 +47,38 @@ void RateSampler::sample(Snapshot &snapshot, double now, int liveSort)
         m_history.append({m_rateDown, m_rateUp, seconds});
     }
 
+    sampleRows(snapshot.overview, m_overviewRows, now);
+    sampleRows(snapshot.live, m_rows, now);
+    m_liveReadAt = now;
+
+    if (liveSort != 0) {
+        const auto rate = [liveSort](const Conversation &row) {
+            return liveSort == 2 ? row.rateDown
+                 : liveSort == 3 ? row.rateUp : row.rateDown + row.rateUp;
+        };
+        std::stable_sort(snapshot.live.begin(), snapshot.live.end(), [&](const Conversation &a, const Conversation &b) {
+            if (a.rateValid != b.rateValid)
+                return a.rateValid;
+            return a.rateValid && rate(a) > rate(b);
+        });
+    }
+
+    snapshot.rateDown = m_rateDown;
+    snapshot.rateUp = m_rateUp;
+    snapshot.ratesValid = m_ratesValid;
+    snapshot.history = m_history;
+}
+
+void RateSampler::sampleRows(QVector<Conversation> &rows,
+                              QHash<QByteArray, RowBaseline> &previous, double now)
+{
     QHash<QByteArray, RowBaseline> next;
-    next.reserve(snapshot.live.size());
-    for (Conversation &row : snapshot.live) {
+    next.reserve(rows.size());
+    for (Conversation &row : rows) {
         const QByteArray key = row.key();
-        const auto it = m_rows.constFind(key);
+        const auto it = previous.constFind(key);
         RowBaseline state;
-        const bool resetRow = it == m_rows.cend() || now < m_liveReadAt
+        const bool resetRow = it == previous.cend() || now < m_liveReadAt
             || row.bytesIn < it->observed.bytesIn || row.bytesOut < it->observed.bytesOut
             || row.packetsIn < it->observed.packetsIn || row.packetsOut < it->observed.packetsOut
             || row.firstSeen != it->observed.firstSeen;
@@ -84,25 +110,7 @@ void RateSampler::sample(Snapshot &snapshot, double now, int liveSort)
         row.rateHistory = state.history;
         next.insert(key, std::move(state));
     }
-    m_rows = std::move(next); // rows leaving Live lose their baselines
-    m_liveReadAt = now;
-
-    if (liveSort != 0) {
-        const auto rate = [liveSort](const Conversation &row) {
-            return liveSort == 2 ? row.rateDown
-                 : liveSort == 3 ? row.rateUp : row.rateDown + row.rateUp;
-        };
-        std::stable_sort(snapshot.live.begin(), snapshot.live.end(), [&](const Conversation &a, const Conversation &b) {
-            if (a.rateValid != b.rateValid)
-                return a.rateValid;
-            return a.rateValid && rate(a) > rate(b);
-        });
-    }
-
-    snapshot.rateDown = m_rateDown;
-    snapshot.rateUp = m_rateUp;
-    snapshot.ratesValid = m_ratesValid;
-    snapshot.history = m_history;
+    previous = std::move(next); // rows leaving Live lose their baselines
 }
 
 } // namespace pigeon

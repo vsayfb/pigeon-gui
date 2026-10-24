@@ -1,6 +1,7 @@
 #include "app/AppController.h"
 
 #include <QFileInfo>
+#include <QAbstractItemModelTester>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -56,6 +57,7 @@ class ControllerTests : public QObject {
     Q_OBJECT
 private slots:
     void localNetworkRanges();
+    void deletionRefreshAndOverviewScope();
     void filtersAndApplicationDrillDown();
     void pauseAndSupersededRefreshes();
     void retrySameDatabasePathAfterFailure();
@@ -207,6 +209,75 @@ void ControllerTests::retrySameDatabasePathAfterFailure()
     controller.retryRead();
     QTRY_VERIFY_WITH_TIMEOUT(!controller.paused(), 3000);
     QVERIFY(controller.hasSnapshot());
+}
+
+void ControllerTests::deletionRefreshAndOverviewScope()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath("history.db");
+    QVERIFY(makeFixture(path));
+    const QString connection = QUuid::createUuid().toString();
+    {
+        QSqlDatabase writer = QSqlDatabase::addDatabase("QSQLITE", connection);
+        writer.setDatabaseName(path);
+        QVERIFY(writer.open());
+        QSqlQuery write(writer);
+        QVERIFY(write.exec("PRAGMA journal_mode=WAL"));
+        QVERIFY(write.exec("UPDATE conversations SET first_seen=strftime('%s','now'),last_seen=strftime('%s','now')"));
+        write.finish();
+
+        AppController controller;
+        auto *overview = static_cast<ConversationsModel *>(controller.overviewModel());
+        auto *live = static_cast<ConversationsModel *>(controller.liveModel());
+        QAbstractItemModelTester overviewTester(overview, QAbstractItemModelTester::FailureReportingMode::QtTest);
+        QAbstractItemModelTester liveTester(live, QAbstractItemModelTester::FailureReportingMode::QtTest);
+        controller.selectDatabase(path);
+        QTRY_COMPARE_WITH_TIMEOUT(overview->rowCount(), 3, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(live->rowCount(), 3, 3000);
+
+        controller.setSearch("first.test");
+        QTRY_COMPARE_WITH_TIMEOUT(live->rowCount(), 1, 3000);
+        QCOMPARE(overview->rowCount(), 3); // Overview never inherits hidden filters.
+
+        // An unrelated Overview row still opens complete details under a filter.
+        const QString id = overview->data(overview->index(0), ConversationsModel::IdentityRole).toString();
+        controller.selectConversation(id, true, true);
+        QVERIFY(controller.selectedDetails().value("inCurrentView").toBool());
+        QVERIFY(!controller.selectedDetails().value("remoteIp").toString().isEmpty());
+
+        controller.retryRead(); // Allow a pre-deletion read to be in flight.
+        QVERIFY(write.exec("DELETE FROM conversations WHERE application='firefox'"));
+        controller.historyDeleted(path);
+        QTRY_VERIFY_WITH_TIMEOUT(controller.hasSnapshot(), 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(overview->rowCount(), 2, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(live->rowCount(), 0, 3000);
+        QCOMPARE(controller.search(), QString("first.test"));
+        QVERIFY(controller.selectedIdentity().isEmpty());
+
+        // Collector activity recreates the deleted key; no GUI restart or
+        // manual refresh is needed to populate the same existing models.
+        QVERIFY(write.exec("INSERT INTO conversations VALUES "
+            "(x'0a000001',x'08080808',443,6,1,1,5,10,strftime('%s','now'),"
+            "strftime('%s','now'),'first.test','firefox')"));
+        QTRY_COMPARE_WITH_TIMEOUT(live->rowCount(), 1, 4000);
+        QTRY_COMPARE_WITH_TIMEOUT(overview->rowCount(), 3, 4000);
+
+        QVERIFY(write.exec("DELETE FROM conversations"));
+        controller.historyDeleted(path);
+        QTRY_VERIFY_WITH_TIMEOUT(controller.hasSnapshot(), 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(overview->rowCount(), 0, 3000);
+        QVERIFY(write.exec("INSERT INTO conversations VALUES "
+            "(x'0a000001',x'01010101',443,6,1,1,5,10,strftime('%s','now'),"
+            "strftime('%s','now'),'other.test','another-process')"));
+        QTRY_COMPARE_WITH_TIMEOUT(overview->rowCount(), 1, 4000);
+        QCOMPARE(live->rowCount(), 0); // Its explicit filter remains intentional.
+        controller.clearFilters();
+        QTRY_COMPARE_WITH_TIMEOUT(live->rowCount(), 1, 3000);
+        write.finish();
+        writer.close();
+    }
+    QSqlDatabase::removeDatabase(connection);
 }
 
 QTEST_GUILESS_MAIN(ControllerTests)

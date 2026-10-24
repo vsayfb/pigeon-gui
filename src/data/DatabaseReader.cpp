@@ -219,6 +219,7 @@ bool DatabaseReader::load(Snapshot &snapshot, const ReadOptions &options, qint64
 {
     snapshot.loadedAt = now;
     return readOverview(snapshot, error)
+        && readConversations(snapshot.overview, ReadOptions{}, now, false, error)
         && readApplications(snapshot.applications, options.sort, error)
         && readConversations(snapshot.live, options, now, false, error)
         && readConversations(snapshot.top, options, now, true, error)

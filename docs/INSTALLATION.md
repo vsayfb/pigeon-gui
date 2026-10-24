@@ -121,3 +121,9 @@ Deletion uses the installed CLI and does not require a collector update for this
 feature. Selected rows are deleted individually; a failure stops the batch and
 reports how many deletion commands completed, then refreshes the view. New traffic
 may recreate deleted conversations. Unselected history is preserved.
+
+Overview always shows unfiltered recent traffic from the last 30 seconds. Search,
+process, protocol, address-family, and recency filters in the workspace affect
+Live Traffic and Top Traffic, not Overview. Its row rates have an independent
+sampling baseline, and deleting history refreshes both models without reopening
+Pigeon.

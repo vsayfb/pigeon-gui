@@ -66,6 +66,7 @@ class AppController : public QObject {
     Q_PROPERTY(bool paused READ paused NOTIFY stateChanged)
     Q_PROPERTY(QString selectedIdentity READ selectedIdentity NOTIFY selectionChanged)
     Q_PROPERTY(QVariantMap selectedDetails READ selectedDetails NOTIFY selectionChanged)
+    Q_PROPERTY(QAbstractItemModel *overviewModel READ overviewModel CONSTANT)
     Q_PROPERTY(QAbstractItemModel *liveModel READ liveModel CONSTANT)
     Q_PROPERTY(QAbstractItemModel *topModel READ topModel CONSTANT)
     Q_PROPERTY(QAbstractItemModel *applicationsModel READ applicationsModel CONSTANT)
@@ -89,6 +90,7 @@ public:
     double uploadRateValue() const { return m_snapshot.rateUp; }
     QVariantList trafficHistory() const;
     QString lastPacketAge() const;
+    QAbstractItemModel *overviewModel() { return &m_overview; }
     QAbstractItemModel *liveModel() { return &m_live; }
     QAbstractItemModel *topModel() { return &m_top; }
     QAbstractItemModel *applicationsModel() { return &m_applications; }
@@ -121,7 +123,7 @@ public:
     Q_INVOKABLE void clearApplication();
     Q_INVOKABLE void clearFilters();
     Q_INVOKABLE void setPaused(bool paused);
-    Q_INVOKABLE void selectConversation(const QString &identity, bool live);
+    Q_INVOKABLE void selectConversation(const QString &identity, bool live, bool overview = false);
     Q_INVOKABLE void clearSelection();
 
 signals:
@@ -149,6 +151,7 @@ private:
     QString m_error;
     Snapshot m_snapshot;
     ReadOptions m_options;
+    ConversationsModel m_overview;
     ConversationsModel m_live;
     ConversationsModel m_top;
     ApplicationsModel m_applications;
@@ -162,6 +165,7 @@ private:
     quint64 m_activeGeneration = 0;
     QString m_selectedIdentity;
     bool m_selectedLive = true;
+    bool m_selectedOverview = false;
     QVariantMap m_selectedDetails;
 };
 

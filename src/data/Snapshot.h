@@ -136,6 +136,7 @@ struct RatePoint {
 };
 
 struct Snapshot {
+    QVector<Conversation> overview; // unfiltered recent traffic, independent of workspace filters
     QVector<Conversation> live;
     QVector<Conversation> top;
     QVector<Application> applications;
