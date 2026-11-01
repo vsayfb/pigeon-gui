@@ -102,7 +102,7 @@ ApplicationWindow {
             }
             Label {
                 Layout.fillWidth: true
-                text: qsTr("Changes the running collector. Recorded history is preserved. Automatic selects once; it does not follow route changes.")
+                text: qsTr("Changes the running collector. Recorded history is preserved. Automatic follows the internet route and waits when no supported connection is ready. Manual selection stays fixed.")
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.textPixels(11)
                 color: Theme.textSecondary

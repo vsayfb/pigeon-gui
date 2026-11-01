@@ -55,6 +55,14 @@ jobs:
             qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts \
             qml6-module-qtquick-window qml6-module-qtquick-templates \
             qml6-module-qtqml qml6-module-qtqml-workerscript qml6-module-qtqml-models libqt6sql6-sqlite
+      - name: Build and test GUI
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure
       - name: Build GUI bundle
         env:
           RELEASE_VERSION: ${{ needs.version.outputs.version }}

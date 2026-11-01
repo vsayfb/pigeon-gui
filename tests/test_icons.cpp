@@ -4,6 +4,8 @@
 #include <QFile>
 #include <QGuiApplication>
 #include <QImage>
+#include <QIcon>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -82,9 +84,23 @@ void IconTests::relativeThemeIcon()
     desktop.close();
 
     const QByteArray oldDataHome = qgetenv("XDG_DATA_HOME");
+    const QStringList oldSearchPaths = QIcon::themeSearchPaths();
+    const QString oldTheme = QIcon::themeName();
+    const QString oldFallback = QIcon::fallbackThemeName();
+    const auto restore = qScopeGuard([&] {
+        if (oldDataHome.isNull())
+            qunsetenv("XDG_DATA_HOME");
+        else
+            qputenv("XDG_DATA_HOME", oldDataHome);
+        QIcon::setThemeSearchPaths(oldSearchPaths);
+        QIcon::setThemeName(oldTheme);
+        QIcon::setFallbackThemeName(oldFallback);
+    });
+    // Offscreen platforms may have no theme at all. Resolve our private
+    // fixture explicitly and keep its environment alive through lazy loading.
     qputenv("XDG_DATA_HOME", directory.path().toUtf8());
+    QIcon::setThemeName(QStringLiteral("hicolor"));
     pigeon::AppIconProvider provider;
-    qputenv("XDG_DATA_HOME", oldDataHome);
 
     const auto image = provider.requestImage("pigeon-themed-process", nullptr, QSize(32, 32));
     QCOMPARE(image.pixelColor(16, 16), QColor("#25B34D"));
