@@ -75,6 +75,16 @@ private slots:
         QTRY_VERIFY(!controller.busy());
         QCOMPARE(controller.currentInterface(), "wifi0");
         QVERIFY(controller.automatic());
+        current = "waiting";
+        controller.refresh();
+        QTRY_VERIFY(!controller.busy());
+        QVERIFY(controller.automatic());
+        QVERIFY(controller.status().contains("waiting for a supported capture interface"));
+        QVERIFY(!controller.status().contains("Capturing on"));
+        current = "wifi0";
+        controller.refresh();
+        QTRY_VERIFY(!controller.busy());
+        QVERIFY(controller.status().contains("Capturing on wifi0"));
         controller.selectInterface("eth0\nAUTO");
         QVERIFY(controller.status().contains("Invalid interface"));
 

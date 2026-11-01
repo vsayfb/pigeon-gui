@@ -115,7 +115,10 @@ void CaptureController::finish()
 
     m_current = QString::fromUtf8(header.at(1));
     m_automatic = header.at(2) == "auto";
-    m_status = QStringLiteral("Capturing on %1 (%2)").arg(m_current, m_automatic ? "automatic" : "manual");
+    const QString mode = m_automatic ? QStringLiteral("automatic") : QStringLiteral("manual");
+    m_status = m_current == QStringLiteral("waiting")
+        ? QStringLiteral("Collector is running; waiting for a supported capture interface (%1)").arg(mode)
+        : QStringLiteral("Capturing on %1 (%2)").arg(m_current, mode);
     if (m_command == "LIST") {
         QVariantList rows;
         for (qsizetype i = 1; i < lines.size(); ++i) {
